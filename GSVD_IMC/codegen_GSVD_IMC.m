@@ -234,7 +234,7 @@ if do_codegen == true
             ydata = round(y_sim(1:1+nt,:)*1000,0);
             udata = round(u_sim(10:10+nt,:)*network_scaling,0);
             fid = fopen([folder_out,'GSVD_test_data_',dirs{i},'.h'], 'w');
-            fprintf(fid, '#ifndef GSVD_TEST_DATA_H\n#define GSVD_TEST_DATA_H\n');
+            fprintf(fid, sprintf('#ifndef GSVD_TEST_DATA_%s_H\n#define GSVD_TEST_DATA_%s_H\n',upper(dirs{i}),upper(dirs{i})));
             fprintf(fid, '#define GSVD_NTEST (%d)\n', nt);
             print_dense_C_matrix(fid, ydata, 'int', 'GSVD_TEST_IN', true,'.gsvd_unit_test', 2);
             print_dense_C_matrix(fid, udata, 'int', 'GSVD_TEST_OUT', true,'.gsvd_unit_test', 2);
