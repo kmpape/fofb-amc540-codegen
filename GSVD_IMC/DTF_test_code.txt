@@ -1,0 +1,74 @@
+
+#if (XXXUNIT_TEST == 1)
+float XXXcalc_error(const float *in1, const float* in2, const int len)
+{
+    int i;
+    float error = 0.0;
+
+    for (i=0; i<len; i++)
+        error += (in1[i]-in2[i]) * (in1[i]-in2[i]);
+    return error;
+}
+
+
+void XXXcopy_vec(const float *in, float *out, const int len)
+{
+    int i;
+    for (i=0; i<len; i++)
+        out[i] = in[i];
+}
+
+
+void XXXprint_vec(const float *in, const int len, const char *name)
+{
+    int i;
+    printf("%s=[", name);
+    for (i=0; i<len; i++)
+        printf("%.8f,", in[i]);
+    printf("]\n");
+}
+
+
+int XXXunit_test(void)
+{
+    int i;
+    int tot_errors = 0;
+    XXXARR_TYPE *in_ptr;
+    XXXARR_TYPE *out_ptr;
+    const XXXARR_TYPE ABS_ERR_TOL = 1e-8;
+
+
+    printf("RUNNING XXXunit_test\n");
+
+    for (i=0; i<XXXtest_nsamples; i++)
+    {
+        XXXARR_TYPE error = 0.0;
+        in_ptr = XXXget_u0_ptr();
+        XXXcopy_vec(&XXXtest_input_data[i*XXXtest_vec_len],
+                            in_ptr, XXXtest_vec_len);
+        XXXexecute();
+        out_ptr = XXXget_y0_ptr();
+        error = XXXcalc_error(out_ptr,
+                &XXXtest_output_data[i*XXXtest_vec_len],
+                XXXtest_vec_len);
+        if (error > ABS_ERR_TOL)
+        {
+            tot_errors++;
+            printf("ERROR at index %d=%.6f\n", i, error);
+            XXXprint_vec(out_ptr, XXXtest_vec_len, "out=");
+            XXXprint_vec(&XXXtest_output_data[i*XXXtest_vec_len],
+                                 XXXtest_vec_len, "res=");
+        }
+    }
+    XXXinit();
+
+    if (tot_errors > 0) {
+        printf("WARNING XXXunit_test FAIL: number of errors=%d out of %d tests\n",
+               tot_errors, XXXtest_nsamples);
+        return 0;
+    } else {
+        printf("XXXunit_test SUCCESS\n");
+        return 1;
+    }
+}
+#endif
