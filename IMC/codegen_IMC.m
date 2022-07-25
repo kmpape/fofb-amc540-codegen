@@ -85,7 +85,7 @@ else
     ny_per_core = n_cores*32;
 end
 nu_pad = n_cores*32-nu;
-ny_pad = nu_pad;
+ny_pad = n_cores*32-ny;
 
 dirs = {'x','y'};
 network_scaling = 1e6;
@@ -96,6 +96,8 @@ if do_codegen == true
         % generate filter
         generate_filter_from_TF_XY(folder_out, nu, num_czx{:}, den_czx{:}, 'IMC_DI',...
             'double', gen_filter_unit_test_data, '.imc_DI', 64, 4.99, num_czy{:}, den_czy{:});
+        % generate_filter_from_TF_XY(foldername, vec_len, num_f, den_f, filter_name,...
+             % filter_base_type, print_test_data, datasection, alignment, integrator_max, num_f2, den_f2)
         % print gain matrix
         if codegen_mc == true
             fid = fopen([folder_out,'IMC_DI_gain_mc_',dirs{i},'.h'], 'w');
@@ -141,7 +143,7 @@ if do_codegen == true
             n_samples = 1000; 
             doff = randn(TOT_BPM,1).*ones(1,n_samples);
             [A, B, C ,D] = ssdata(RMorig .* gI_mp_z);
-            [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-nu_pad).*cz);
+            [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-ny_pad).*cz);
             [y_sim, u_sim] = sim_standard_imc(...
                                 n_samples, n_delay, id_to_bpm, slow_to_id, doff,...
                                 Ac, Bc, Cc, Dc,... % CONTROLLER STATE-SPACE
