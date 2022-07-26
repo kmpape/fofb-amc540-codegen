@@ -50,12 +50,12 @@ minus_one = -1;
 
 %% Mid-Ranging IMC
 bw_allx = 200*2*pi; % overall desired bandwidth [rad/s]
-bw_sx = 100*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_sx = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
 bw_ally = 200*2*pi; % overall desired bandwidth [rad/s]
-bw_sy = 100*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
 
@@ -202,7 +202,7 @@ if do_codegen == true
         end
         
         if gen_ctr_test_data == 1
-            n_samples = 1000; 
+            n_samples = 10000; 
             doff = randn(TOT_BPM,1).*ones(1,n_samples);
             if i==1
                 tf_DI = tf_DIx; 
