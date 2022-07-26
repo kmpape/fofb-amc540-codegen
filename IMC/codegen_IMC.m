@@ -22,13 +22,15 @@ RMorigy = Rmat(4).Data(:,:);%  * 1e6; % RM(4) eq to RM(2,2)
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
 [TOT_BPM,TOT_CM] = size(RMorigx);
-if (0) % use same storage ring config as GSVD-IMC
+if (1) % use same storage ring config as GSVD-IMC
     [id_to_bpm, slow_to_id, ~] = diamond_I_configuration_v3(RMorigx,RMorigy);
+    n_cores = 4;
 else % full storage ring
     id_to_bpm = 1:1:173;
     bad_bpm = [76,79];
     id_to_bpm(bad_bpm) = [];
     slow_to_id = 1:1:172;
+    n_cores = 6;
 end
 
 RMx = RMorigx(id_to_bpm, slow_to_id);
@@ -76,7 +78,6 @@ c_zx = q_zx / (1 - T_mp_z*z^(-n_delay));
 c_zy = q_zy / (1 - T_mp_z*z^(-n_delay));
 
 %% Code generation
-n_cores = 6;
 if codegen_mc == true
     nu_per_core = 32;
     ny_per_core = 32;
@@ -140,7 +141,7 @@ if do_codegen == true
                 RMorig = RMorigy;
                 gI_mp_z = gI_mp_zy;
             end
-            n_samples = 1000; 
+            n_samples = 10000; 
             doff = randn(TOT_BPM,1).*ones(1,n_samples);
             [A, B, C ,D] = ssdata(RMorig .* gI_mp_z);
             [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-ny_pad).*cz);
