@@ -1,12 +1,12 @@
 function [y_sim, u_sim] = sim_standard_imc(...
     nsamples, n_delay, id_to_bpm, id_to_cm, dist,...
     Ac, Bc, Cc, Dc,... % CONTROLLER STATE-SPACE
-    A, B, C, D, network_scaling) % PLANT STATE-SPACE
+    A, B, C, D, network_scaling, open_loop) % PLANT STATE-SPACE
 % Input to controller:      NANOMETERS
 % Output of controller:     AMPERES
 % DSP scaling out:          1e6
 % VME scaling in:           -1/1e6 (fixed)
-
+if ~exist('open_loop', 'var') open_loop = false; end
 
 %%
 use_single = true;
@@ -46,7 +46,11 @@ u_sim = zeros(nu, nsamples);
 for ii = 1 : nsamples
     
     % Measure Plant Output
-    y_sim(:, ii) = C * x_sim_new + dist(:, ii);
+    if ~open_loop
+        y_sim(:, ii) = C * x_sim_new + dist(:, ii);
+    else
+        y_sim(:, ii) = dist(:, ii);
+    end
     
     % Update Controller
     if ii > n_delay
