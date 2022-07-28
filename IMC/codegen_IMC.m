@@ -22,7 +22,7 @@ RMorigy = Rmat(4).Data(:,:);%  * 1e6; % RM(4) eq to RM(2,2)
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
 [TOT_BPM,TOT_CM] = size(RMorigx);
-if (1) % use same storage ring config as GSVD-IMC
+if (0) % use same storage ring config as GSVD-IMC
     [id_to_bpm, slow_to_id, ~] = diamond_I_configuration_v3(RMorigx,RMorigy);
     n_cores = 4;
 else % full storage ring
