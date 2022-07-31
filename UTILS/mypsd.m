@@ -47,7 +47,7 @@ fs = delta_f * (0:numfreqs-1);
 % power per Hz
 psd = psd(1:numfreqs) / F_S;
 
-% remove 0 frequency
+% remove 0 frequency % CHANGED for psd
 fs = fs(1:end);
 psd = psd(1:end);
 % integrate: limit as df -> 0 of sum(psd * delta_f)
