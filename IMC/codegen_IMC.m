@@ -64,8 +64,7 @@ nu_y = length(id_to_cm_y);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 8; % number of delay time steps [-]
-z = tf('z');
+n_delay = 9; % number of delay time steps [-]
 s = tf('s');
 aIx = 2*pi*500;
 aIy = 2*pi*700;
