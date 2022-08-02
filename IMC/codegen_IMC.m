@@ -13,7 +13,7 @@ gen_filter_unit_test_data = 0;
 gen_matvec_mpy_unit_test_data = 0; 
 use_PYTHON_parameter = 0;
 
-sr_config_choice = 4;
+sr_config_choice = 3;
 
 FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
