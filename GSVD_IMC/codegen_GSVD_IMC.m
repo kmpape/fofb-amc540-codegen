@@ -35,7 +35,7 @@ nf = length(fast_to_id);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 8; % number of delay time steps [-]
+n_delay = 9; % number of delay time steps [-]
 z = tf('z');
 s = tf('s');
 aIx = 2*pi*500;
@@ -54,7 +54,7 @@ bw_sx = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
-bw_ally = 200*2*pi; % overall desired bandwidth [rad/s]
+bw_ally = 176*2*pi; % overall desired bandwidth [rad/s]
 bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
@@ -232,7 +232,7 @@ if do_codegen == true
                 id_to_bpm, slow_to_id, fast_to_id, false, network_scaling);
             nt = 100;
             ydata = round(y_sim(1:1+nt,:)*1000,0);
-            udata = round(u_sim(10:10+nt,:)*network_scaling,0);
+            udata = round(u_sim(2+n_delay:2+n_delay+nt,:)*network_scaling,0);
             fid = fopen([folder_out,'GSVD_test_data_',dirs{i},'.h'], 'w');
             fprintf(fid, sprintf('#ifndef GSVD_TEST_DATA_%s_H\n#define GSVD_TEST_DATA_%s_H\n',upper(dirs{i}),upper(dirs{i})));
             fprintf(fid, '#define GSVD_NTEST (%d)\n', nt);
