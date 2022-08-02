@@ -49,7 +49,7 @@ gI_mp_zy = c2d(tf_DIy, Ts, 'zoh');
 minus_one = -1;
 
 %% Mid-Ranging IMC
-bw_allx = 200*2*pi; % overall desired bandwidth [rad/s]
+bw_allx = 176*2*pi; % overall desired bandwidth [rad/s]
 bw_sx = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
