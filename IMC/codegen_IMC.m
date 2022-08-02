@@ -89,7 +89,7 @@ Ky = V*E*U';
 
 z = tf('z', Ts);
 s = tf('s');
-bw = 2*pi*200;
+bw = 2*pi*176;
 abw = exp(-bw*Ts);
 T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
 q_zx = T_mp_z / gI_mp_zx;
@@ -180,7 +180,7 @@ if do_codegen == true
                 RMorig = RMorigy;
                 gI_mp_z = gI_mp_zy;
             end
-            n_samples = 10000; 
+            n_samples = 1000; 
             doff = randn(TOT_BPM,1).*ones(1,n_samples);
             [A, B, C ,D] = ssdata(RMorig .* gI_mp_z);
             [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-ny_pad).*cz);
@@ -191,7 +191,7 @@ if do_codegen == true
                     
             nt = 50;
             ydata = round(y_sim(1:1+nt,:)*1000,0);
-            udata = round(u_sim(9:9+nt,:)*1e6,0);
+            udata = round(u_sim(1+n_delay:1+n_delay+nt,:)*1e6,0);
             fid = fopen([folder_out,'IMC_test_data_',dirs{i},'.h'], 'w');
             fprintf(fid, sprintf('#ifndef IMC_TEST_DATA_%s_H\n#define IMC_TEST_DATA_%s_H\n',upper(dirs{i}),upper(dirs{i})));
             fprintf(fid, '#define IMC_NTEST (%d)\n', nt);
