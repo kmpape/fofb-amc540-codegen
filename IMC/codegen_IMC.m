@@ -13,31 +13,53 @@ gen_filter_unit_test_data = 0;
 gen_matvec_mpy_unit_test_data = 0; 
 use_PYTHON_parameter = 0;
 
+sr_config_choice = 4;
+
+FULL_CONFIG = 0; % 171 x 172
+V3_CONFIG   = 3; % 96 x 96
+V4_CONFIG   = 4; % 03.08.2022 SR config
+
 %% Configure Diamond-I Storage Ring
 load(fname_RM);
-RMorigx = Rmat(1).Data(:,:);%  * 1e6; % RM(1) eq to RM(1,1)
+RMorigx = Rmat(1).Data(:,:); % * 1e6; % RM(1) eq to RM(1,1)
 [ny_x,nu_x] = size(RMorigx);
-RMorigy = Rmat(4).Data(:,:);%  * 1e6; % RM(4) eq to RM(2,2)
+RMorigy = Rmat(4).Data(:,:); % * 1e6; % RM(4) eq to RM(2,2)
 [ny_y,nu_y] = size(RMorigy);
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
 [TOT_BPM,TOT_CM] = size(RMorigx);
-if (0) % use same storage ring config as GSVD-IMC
-    [id_to_bpm, slow_to_id, ~] = diamond_I_configuration_v3(RMorigx,RMorigy);
+
+if (sr_config_choice == V3_CONFIG) % use same storage ring config as GSVD-IMC
+    [id_to_bpm_tmp, id_to_cm_tmp, ~] = diamond_I_configuration_v3(RMorigx,RMorigy);
+    id_to_bpm_x = id_to_bpm_tmp;
+    id_to_bpm_y = id_to_bpm_tmp;
+    id_to_cm_x = id_to_cm_tmp;
+    id_to_cm_y = id_to_cm_tmp;
     n_cores = 4;
-else % full storage ring
-    id_to_bpm = 1:1:173;
+elseif (sr_config_choice == FULL_CONFIG)
+    id_to_bpm_tmp = 1:1:173;
     bad_bpm = [76,79];
-    id_to_bpm(bad_bpm) = [];
-    slow_to_id = 1:1:172;
+    id_to_bpm_tmp(bad_bpm) = [];
+    id_to_cm_tmp = 1:1:172;
+    id_to_bpm_x = id_to_bpm_tmp;
+    id_to_bpm_y = id_to_bpm_tmp;
+    id_to_cm_x = id_to_cm_tmp;
+    id_to_cm_y = id_to_cm_tmp;
     n_cores = 6;
+elseif (sr_config_choice == V4_CONFIG) % use same storage ring config as GSVD-IMC
+    [id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy);
+    n_cores = 6;
+else
+    assert(0);
 end
 
-RMx = RMorigx(id_to_bpm, slow_to_id);
-RMy = RMorigy(id_to_bpm, slow_to_id);
+RMx = RMorigx(id_to_bpm_x, id_to_cm_x);
+RMy = RMorigy(id_to_bpm_y, id_to_cm_y);
 
-ny = length(id_to_bpm);
-nu = length(slow_to_id);
+ny_x = length(id_to_bpm_x);
+nu_x = length(id_to_cm_x);
+ny_y = length(id_to_bpm_y);
+nu_y = length(id_to_cm_y);
 
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
@@ -57,12 +79,12 @@ minus_one = -1;
 
 %% IMC
 [U, S, V] = svd(RMx, 'econ');
-MU = 1.0*eye(ny);
+MU = 1.0*eye(ny_x);
 E = S / (S.^2+MU);
 Kx = V*E*U';
 
 [U, S, V] = svd(RMy, 'econ');
-MU = 1.0*eye(ny);
+MU = 1.0*eye(ny_y);
 E = S / (S.^2+MU);
 Ky = V*E*U';
 
@@ -85,13 +107,31 @@ else
     nu_per_core = n_cores*32;
     ny_per_core = n_cores*32;
 end
-nu_pad = n_cores*32-nu;
-ny_pad = n_cores*32-ny;
+nu_pad_x = n_cores*32-nu_x;
+ny_pad_x = n_cores*32-ny_x;
+nu_pad_y = n_cores*32-nu_y;
+ny_pad_y = n_cores*32-ny_y;
 
 dirs = {'x','y'};
 network_scaling = 1e6;
 if do_codegen == true
     for i = 1 : 2
+        if i == 1
+            ny = ny_x; 
+            nu = nu_x; 
+            ny_pad = ny_pad_x; 
+            nu_pad = nu_pad_x;
+            id_to_bpm = id_to_bpm_x;
+            id_to_cm = id_to_cm_x;
+        else
+            ny = ny_y; 
+            nu = nu_y; 
+            ny_pad = ny_pad_y; 
+            nu_pad = nu_pad_y;
+            id_to_bpm = id_to_bpm_y;
+            id_to_cm = id_to_cm_y;
+        end
+        
         [num_czx, den_czx] = tfdata(c_zx);
         [num_czy, den_czy] = tfdata(c_zy);
         % generate filter
@@ -101,11 +141,11 @@ if do_codegen == true
              % filter_base_type, print_test_data, datasection, alignment, integrator_max, num_f2, den_f2)
         % print gain matrix
         if codegen_mc == true
-            fid = fopen([folder_out,'IMC_DI_gain_mc_',dirs{i},'.h'], 'w');
+            fid = fopen([folder_out, 'IMC_DI_gain_mc_', dirs{i}, '.h'], 'w');
         else
-            fid = fopen([folder_out,'IMC_DI_gain_',dirs{i},'.h'], 'w');
+            fid = fopen([folder_out, 'IMC_DI_gain_', dirs{i}, '.h'], 'w');
         end
-        fprintf(fid, '#ifndef IMC_DI_GAIN_H\n#define IMC_DI_GAIN_H\n');
+        fprintf(fid, '#ifndef IMC_DI_GAIN_%s_H\n#define IMC_DI_GAIN_%s_H\n', upper(dirs{i}), upper(dirs{i}));
         fprintf(fid, '#define IMC_DI_GAIN_NY (%d)\n', ny);
         fprintf(fid, '#define IMC_DI_GAIN_NU (%d)\n', nu);
         
@@ -125,9 +165,9 @@ if do_codegen == true
         fclose(fid);
         
         fid = fopen([folder_out,'IMC_storage_ring_config_',dirs{i},'.h'], 'w');
-        fprintf(fid, '#ifndef IMC_STORAGE_RING_CONFIG_H\n#define IMC_STORAGE_RING_CONFIG_H\n');
+        fprintf(fid, '#ifndef IMC_STORAGE_RING_CONFIG_%s_H\n#define IMC_STORAGE_RING_CONFIG_%s_H\n', upper(dirs{i}), upper(dirs{i}));
         print_dense_C_matrix(fid, id_to_bpm-1, 'int', 'IMC_ID_TO_BPM', true, '.imc_shared', 2);
-        print_dense_C_matrix(fid, slow_to_id-1, 'int', 'IMC_CM_TO_BPM', true, '.imc_shared', 2);
+        print_dense_C_matrix(fid, id_to_cm-1, 'int', 'IMC_CM_TO_BPM', true, '.imc_shared', 2);
         fprintf(fid, '#endif\n');
         fclose(fid);
         
@@ -146,7 +186,7 @@ if do_codegen == true
             [A, B, C ,D] = ssdata(RMorig .* gI_mp_z);
             [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-ny_pad).*cz);
             [y_sim, u_sim] = sim_standard_imc(...
-                                n_samples, n_delay, id_to_bpm, slow_to_id, doff,...
+                                n_samples, n_delay, id_to_bpm, id_to_cm, doff,...
                                 Ac, Bc, Cc, Dc,... % CONTROLLER STATE-SPACE
                                 A, B, C, D, network_scaling); % PLANT STATE-SPACE
                     
