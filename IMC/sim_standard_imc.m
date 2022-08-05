@@ -14,7 +14,7 @@ use_single = true;
 % Does not support feedthrough on plant
 assert(sum(sum(abs(D))) == 0);
 assert(size(dist, 2) == nsamples);
-assert(size(dist, 1) == size(C, 1));
+%assert(size(dist, 1) == size(C, 1));
 
 % Dimensions Plant == Dimension Model
 [nx, ~] = size(A);

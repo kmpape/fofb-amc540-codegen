@@ -1,10 +1,19 @@
-function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bws, bwf, w_Hz)
+function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bws, bwf, n_delay, w_Hz, plot_bode, n_delay_plant)
 addpath('..')
-if ~exist('bws','var')
+if ~exist('bws','var') || isempty(bws)
     bws = 100*2*pi;
 end
-if ~exist('bwf','var')
+if ~exist('bwf','var') || isempty(bwf)
     bwf = 200*2*pi;
+end
+if ~exist('n_delay','var') || isempty(n_delay)
+    n_delay = 8;
+end
+if ~exist('n_delay_plant','var') || isempty(n_delay_plant)
+    n_delay_plant = n_delay;
+end
+if ~exist('plot_bode','var') || isempty(plot_bode)
+    plot_bode = false;
 end
 
 %% Configure Diamond-I Storage Ring
@@ -21,15 +30,31 @@ nf = length(fast_to_id);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 8; % number of delay time steps [-]
 z = tf('z');
 s = tf('s');
 aIx = 2*pi*500;
 aIy = 2*pi*700;
-gx = aIx/(s+aIx);
-gy = aIy/(s+aIy);
+gx_mp = aIx/(s+aIx);
+gy_mp = aIy/(s+aIy);
 T_delay = n_delay*Ts; % delay [s]
+T_delay_plant = n_delay_plant*Ts; % delay [s]
 tf_delay = exp(-s*T_delay);
+tf_delay_plant = exp(-s*T_delay_plant);
+gx = gx_mp * tf_delay;
+gy = gy_mp * tf_delay;
+gx_plant = gx_mp * tf_delay_plant;
+gy_plant = gy_mp * tf_delay_plant;
+
+if plot_bode
+    bode_opt = bodeoptions();
+    bode_opt.FreqUnits = 'Hz';
+    bode_opt.XLim = [0.1, 10^4];
+    figure;
+    bodeplot(gx, gy, bode_opt);
+    axes_handles = findall(gcf, 'type', 'axes');
+    legend(axes_handles(3),'X','Y','Location', 'NorthEast')
+    title('Actuators');
+end
 
 %% Mid-Ranging IMC
 bw_allx = bwf; % overall desired bandwidth [rad/s]
@@ -47,33 +72,59 @@ T_sisox = T_siso_mpx * tf_delay;
 T_tisoy = T_tiso_mpy * tf_delay;
 T_sisoy = T_siso_mpy * tf_delay;
 
-qsx = T_siso_mpx / gx;
-qfx = (T_tiso_mpx - T_siso_mpx) / gx;
-qsy = T_siso_mpy / gy;
-qfy = (T_tiso_mpy - T_siso_mpy) / gy;
+S_tisox = 1 - T_tisox;
+S_sisox = 1 - T_sisox;
+S_tisoy = 1 - T_tisoy;
+S_sisoy = 1 - T_sisoy;
+
+qsx = T_siso_mpx / gx_mp;
+qfx = (T_tiso_mpx - T_siso_mpx) / gx_mp;
+qsy = T_siso_mpy / gy_mp;
+qfy = (T_tiso_mpy - T_siso_mpy) / gy_mp;
+
+if plot_bode
+    figure;
+    bodeplot(T_tisox, T_sisox, bode_opt);
+    axes_handles = findall(gcf, 'type', 'axes');
+    legend(axes_handles(3),'TISO X \& Y','SISO X \& Y','Location', 'SouthWest');
+    title('Complementary Sensitivity');
+            
+    figure;
+    bodeplot(S_tisox, S_sisox, bode_opt);
+    axes_handles = findall(gcf, 'type', 'axes');
+    legend(axes_handles(3),'TISO X \& Y','SISO X \& Y','Location', 'SouthWest');
+    title('Output Sensitivity');
+    
+    figure;
+    bodeplot(qsx, qfx, qsy, qfy, bode_opt);
+    axes_handles = findall(gcf, 'type', 'axes');
+    legend(axes_handles(3),'$q_{s,x}$', '$q_{f,x}$', '$q_{s,y}$', '$q_{f,y}$','Location', 'SouthWest');
+    title('IMC Controller');
+end
 
 %% GSVD
+mu = 0;
+
 [Usx,Ufx,Xx,C,S] = gsvd(Rsx', Rfx');
 Ssx = C';
 Sfx = S';
 Ffx = Xx*pinv(Xx*blkdiag(eye(rank(Rfx)), zeros(ns-rank(Rfx))));  
-mu = 1;
 Gx = Xx*((Xx'*Xx+mu*eye(ny))\Xx');
-Ksx = -(Usx*inv(Ssx)/Xx)*Gx;
-Kfx = -((Ufx*pinv(Sfx)/Xx)*Ffx)*Gx;
-Psx = -Gx\Rsx;
-Pfx = -Gx\Rfx;
+% Ksx = -(Usx*inv(Ssx)/Xx)*Gx;
+% Kfx = -((Ufx*pinv(Sfx)/Xx)*Ffx)*Gx;
+% Psx = -Gx\Rsx;
+% Pfx = -Gx\Rfx;
 
 [Usy,Ufy,Xy,C,S] = gsvd(Rsy', Rfy');
 Ssy = C';
 Sfy = S';
 Ffy = Xy*pinv(Xy*blkdiag(eye(rank(Rfy)), zeros(ns-rank(Rfy)))); 
-mu = 1;
+
 Gy = Xy*((Xy'*Xy+mu*eye(ny))\Xy');
-Ksy = -(Usy*inv(Ssy)/Xy)*Gy;
-Kfy = -((Ufy*pinv(Sfy)/Xy)*Ffy)*Gy;
-Psy = -Gy\Rsy;
-Pfy = -Gy\Rfy;
+% Ksy = -(Usy*inv(Ssy)/Xy)*Gy;
+% Kfy = -((Ufy*pinv(Sfy)/Xy)*Ffy)*Gy;
+% Psy = -Gy\Rsy;
+% Pfy = -Gy\Rfy;
 
 %%
 nw = length(w_Hz);
@@ -83,15 +134,20 @@ T_sisox_w = freqresp(T_sisox, w_Hz, 'Hz'); T_sisox_w = T_sisox_w(:);
 T_tisoy_w = freqresp(T_tisoy, w_Hz, 'Hz'); T_tisoy_w = T_tisoy_w(:);
 T_sisoy_w = freqresp(T_sisoy, w_Hz, 'Hz'); T_sisoy_w = T_sisoy_w(:);
 
+S_tisox_w = freqresp(S_tisox, w_Hz, 'Hz'); S_tisox_w = S_tisox_w(:);
+S_sisox_w = freqresp(S_sisox, w_Hz, 'Hz'); S_sisox_w = S_sisox_w(:);
+S_tisoy_w = freqresp(S_tisoy, w_Hz, 'Hz'); S_tisoy_w = S_tisoy_w(:);
+S_sisoy_w = freqresp(S_sisoy, w_Hz, 'Hz'); S_sisoy_w = S_sisoy_w(:);
+
 qsx_w = freqresp(qsx, w_Hz, 'Hz'); qsx_w = qsx_w(:);
 qfx_w = freqresp(qfx, w_Hz, 'Hz'); qfx_w = qfx_w(:);
-gsx_w = freqresp(gx, w_Hz, 'Hz'); gsx_w = gsx_w(:);
-gfx_w = freqresp(gx, w_Hz, 'Hz'); gfx_w = gfx_w(:);
+gsx_w = freqresp(gx_plant, w_Hz, 'Hz'); gsx_w = gsx_w(:);
+gfx_w = freqresp(gx_plant, w_Hz, 'Hz'); gfx_w = gfx_w(:);
 
 qsy_w = freqresp(qsy, w_Hz, 'Hz'); qsy_w = qsy_w(:);
 qfy_w = freqresp(qfy, w_Hz, 'Hz'); qfy_w = qfy_w(:);
-gsy_w = freqresp(gy, w_Hz, 'Hz'); gsy_w = gsy_w(:);
-gfy_w = freqresp(gy, w_Hz, 'Hz'); gfy_w = gfy_w(:);
+gsy_w = freqresp(gy_plant, w_Hz, 'Hz'); gsy_w = gsy_w(:);
+gfy_w = freqresp(gy_plant, w_Hz, 'Hz'); gfy_w = gfy_w(:);
 
 
 tmp_Qsx = Usx*inv(Ssx)/Xx;
@@ -120,6 +176,13 @@ for i = 1 : nw
     Sminmax_x(2,i) = max(svd(S_matx));
     Sminmax_y(1,i) = min(svd(S_maty));
     Sminmax_y(2,i) = max(svd(S_maty));
+end
+
+if plot_bode
+    figure;
+    semilogx(w_Hz, 20*log10(Sminmax_x(1,:)), 'r', w_Hz, 20*log10(Sminmax_x(2,:)), 'r', ...
+        w_Hz, 20*log10(abs(S_sisox_w)), 'b--', w_Hz, 20*log10(abs(S_tisox_w)), 'b--');
+    
 end
 
 end

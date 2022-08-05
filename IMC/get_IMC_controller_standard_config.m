@@ -1,6 +1,6 @@
-function [n_delay, id_to_bpm, id_to_cm, network_scaling,...
+function [n_delay, id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y,  network_scaling,...
           Acx, Bcx, Ccx, Dcx, Ax, Bx, Cx, Dx,...
-          Acy, Bcy, Ccy, Dcy, Ay, By, Cy, Dy] = get_IMC_controller(RMorigx, RMorigy, full_config, bw, n_delay)
+          Acy, Bcy, Ccy, Dcy, Ay, By, Cy, Dy] = get_IMC_controller_standard_config(RMorigx, RMorigy, bw, n_delay)
 % Returns the controller in standard FB form with the corresponding SS
 % system
 addpath('..')
@@ -14,20 +14,13 @@ end
 [ny_y,nu_y] = size(RMorigy);
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
-if (~full_config) % use same storage ring config as GSVD-IMC
-    [id_to_bpm, slow_to_id, ~] = diamond_I_configuration_v3(RMorigx,RMorigy);
-else % full storage ring
-    id_to_bpm = 1:1:173;
-    bad_bpm = [76,79];
-    id_to_bpm(bad_bpm) = [];
-    slow_to_id = 1:1:172;
-end
-id_to_cm = slow_to_id;
+[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy);
 
-RMx = RMorigx(id_to_bpm, slow_to_id);
-RMy = RMorigy(id_to_bpm, slow_to_id);
+RMx = RMorigx(id_to_bpm_x, id_to_cm_x);
+RMy = RMorigy(id_to_bpm_y, id_to_cm_y);
 
-ny = length(id_to_bpm);
+ny_x = length(id_to_bpm_x);
+ny_y = length(id_to_bpm_y);
 
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
@@ -43,12 +36,12 @@ gI_mp_zy = c2d(tf_DIy, Ts, 'zoh');
 
 %% IMC
 [U, S, V] = svd(RMx, 'econ');
-MU = 1.0*eye(ny);
+MU = 1.0*eye(ny_x);
 E = S / (S.^2+MU);
 Kx = V*E*U';
 
 [U, S, V] = svd(RMy, 'econ');
-MU = 1.0*eye(ny);
+MU = 1.0*eye(ny_y);
 E = S / (S.^2+MU);
 Ky = V*E*U';
 

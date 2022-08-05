@@ -3,13 +3,16 @@ function [n_delay, Ax, Bx, Cx, Dx, Ay, By, Cy, Dy,...
           Kfx, Acfx, Bcfx, Ccfx, Dcfx, Kfy, Acfy, Bcfy, Ccfy, Dcfy,...
           Psx, Amsx, Bmsx, Cmsx, Dmsx, Psy, Amsy, Bmsy, Cmsy, Dmsy,...
           Pfx, Amfx, Bmfx, Cmfx, Dmfx, Pfy, Amfy, Bmfy, Cmfy, Dmfy,...
-          id_to_bpm, slow_to_id, fast_to_id, network_scaling] = get_GSVD_IMC_controller(RMorigx, RMorigy, bws, bwf)
+          id_to_bpm, slow_to_id, fast_to_id, network_scaling] = get_GSVD_IMC_controller(RMorigx, RMorigy, bws, bwf,n_delay)
 addpath('..')
-if ~exist('bws','var')
-    bws = 100*2*pi;
+if ~exist('bws','var') || isempty(bws)
+    bws = 100*2*pi; % [rad/s]
 end
-if ~exist('bwf','var')
-    bwf = 200*2*pi;
+if ~exist('bwf','var') || isempty(bwf)
+    bwf = 200*2*pi; % [rad/s]
+end
+if ~exist('n_delay','var') || isempty(n_delay)
+    n_delay = 8; % number of delay time steps [-]
 end
 
 %% Configure Diamond-I Storage Ring
@@ -26,7 +29,6 @@ nf = length(fast_to_id);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 8; % number of delay time steps [-]
 z = tf('z');
 s = tf('s');
 aIx = 2*pi*500;
