@@ -5,7 +5,7 @@ addpath('..')
 
 %% Options
 do_codegen = 1; % print files
-fname_RM = '../ORMS/GoldenBPMResp_DIAD.mat';
+fname_RM = '../ORMS/GoldenBPMResp_I04.mat';
 folder_out = 'out/'; % output folder for codegen
 codegen_mc = 1; % switch between multicore (mc) or single-core code gen
 gen_filter_unit_test_data = 0;
@@ -35,7 +35,7 @@ nf = length(fast_to_id);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 8; % number of delay time steps [-]
+n_delay = 9; % number of delay time steps [-]
 z = tf('z');
 s = tf('s');
 aIx = 2*pi*500;
