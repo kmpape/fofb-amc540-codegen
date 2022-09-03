@@ -1,4 +1,4 @@
-function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bws, bwf, n_delay, w_Hz, plot_bode, n_delay_plant)
+function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bws, bwf, n_delay, w_Hz, plot_bode, n_delay_plant, mu)
 addpath('..')
 if ~exist('bws','var') || isempty(bws)
     bws = 100*2*pi;
@@ -14,6 +14,9 @@ if ~exist('n_delay_plant','var') || isempty(n_delay_plant)
 end
 if ~exist('plot_bode','var') || isempty(plot_bode)
     plot_bode = false;
+end
+if ~exist('mu','var') || isempty(mu)
+    mu = 1;
 end
 
 %% Configure Diamond-I Storage Ring
@@ -45,10 +48,10 @@ gy = gy_mp * tf_delay;
 gx_plant = gx_mp * tf_delay_plant;
 gy_plant = gy_mp * tf_delay_plant;
 
-if plot_bode
-    bode_opt = bodeoptions();
-    bode_opt.FreqUnits = 'Hz';
-    bode_opt.XLim = [0.1, 10^4];
+bode_opt = bodeoptions();
+bode_opt.FreqUnits = 'Hz';
+bode_opt.XLim = [0.01, 10^4];
+if false
     figure;
     bodeplot(gx, gy, bode_opt);
     axes_handles = findall(gcf, 'type', 'axes');
@@ -82,7 +85,7 @@ qfx = (T_tiso_mpx - T_siso_mpx) / gx_mp;
 qsy = T_siso_mpy / gy_mp;
 qfy = (T_tiso_mpy - T_siso_mpy) / gy_mp;
 
-if plot_bode
+if false
     figure;
     bodeplot(T_tisox, T_sisox, bode_opt);
     axes_handles = findall(gcf, 'type', 'axes');
@@ -94,7 +97,9 @@ if plot_bode
     axes_handles = findall(gcf, 'type', 'axes');
     legend(axes_handles(3),'TISO X \& Y','SISO X \& Y','Location', 'SouthWest');
     title('Output Sensitivity');
+end
     
+if plot_bode
     figure;
     bodeplot(qsx, qfx, qsy, qfy, bode_opt);
     axes_handles = findall(gcf, 'type', 'axes');
@@ -103,13 +108,19 @@ if plot_bode
 end
 
 %% GSVD
-mu = 0;
+%mu = 1;
 
 [Usx,Ufx,Xx,C,S] = gsvd(Rsx', Rfx');
+% [UX,~,~] = svd(Xx);
+% m_crit = size(Xx,1);
+% w_vec = [ones(m_crit,1); ones(size(Xx,1)-m_crit,1)/100];
+% W = UX * diag(w_vec) * UX' / sum(w_vec) * size(Xx,1);
+
 Ssx = C';
 Sfx = S';
 Ffx = Xx*pinv(Xx*blkdiag(eye(rank(Rfx)), zeros(ns-rank(Rfx))));  
 Gx = Xx*((Xx'*Xx+mu*eye(ny))\Xx');
+%Gx = Xx*((Xx'*W*Xx+mu*eye(ny))\Xx'*W');
 % Ksx = -(Usx*inv(Ssx)/Xx)*Gx;
 % Kfx = -((Ufx*pinv(Sfx)/Xx)*Ffx)*Gx;
 % Psx = -Gx\Rsx;
@@ -180,8 +191,14 @@ end
 
 if plot_bode
     figure;
+    subplot(1,2,1);
     semilogx(w_Hz, 20*log10(Sminmax_x(1,:)), 'r', w_Hz, 20*log10(Sminmax_x(2,:)), 'r', ...
         w_Hz, 20*log10(abs(S_sisox_w)), 'b--', w_Hz, 20*log10(abs(S_tisox_w)), 'b--');
+    title('X')
+    subplot(1,2,2);
+    semilogx(w_Hz, 20*log10(Sminmax_y(1,:)), 'r', w_Hz, 20*log10(Sminmax_y(2,:)), 'r', ...
+        w_Hz, 20*log10(abs(S_sisoy_w)), 'b--', w_Hz, 20*log10(abs(S_tisoy_w)), 'b--');
+    title('Y')
     
 end
 

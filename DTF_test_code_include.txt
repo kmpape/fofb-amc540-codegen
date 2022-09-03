@@ -1,0 +1,7 @@
+#if (XXXUNIT_TEST == 1)
+#include "XXXUNIT_TEST.h"
+#ifdef SOC_C6678
+#include <c6x.h>
+#include "nimu_cppi_qmss_iface.h"
+#endif
+#endif

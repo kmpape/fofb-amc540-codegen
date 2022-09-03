@@ -1,20 +1,10 @@
-function [n_delay, id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y,  network_scaling,...
+function [network_scaling,...
           Acx, Bcx, Ccx, Dcx, Ax, Bx, Cx, Dx,...
-          Acy, Bcy, Ccy, Dcy, Ay, By, Cy, Dy] =...
-          get_IMC_controller_standard_config(RMorigx, RMorigy, bw, n_delay, RMorigx_plant, RMorigy_plant)
+          Acy, Bcy, Ccy, Dcy, Ay, By, Cy, Dy] = get_IMC_controller_cfgv4_square(RMorigx, RMorigy,...
+                                                                                bw, n_delay)
 % Returns the controller in standard FB form with the corresponding SS
 % system
 addpath('..')
-if ~exist('n_delay','var') || isempty(n_delay)
-    n_delay = 8; % number of delay time steps [-]
-end
-if ~exist('RMorigx_plant','var') || isempty(n_delay)
-    RMorigx_plant = RMorigx;
-end
-if ~exist('RMorigy_plant','var') || isempty(n_delay)
-    RMorigy_plant = RMorigy;
-end
-
 
 %% Configure Diamond-I Storage Ring
 
@@ -22,7 +12,7 @@ end
 [ny_y,nu_y] = size(RMorigy);
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
-[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy);
+[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy,true);
 
 RMx = RMorigx(id_to_bpm_x, id_to_cm_x);
 RMy = RMorigy(id_to_bpm_y, id_to_cm_y);
@@ -67,8 +57,8 @@ c_zy = q_zy / (1 - T_mp_z*z^(-n_delay));
 
 %%
 network_scaling = 1e6;
-[Ax, Bx, Cx ,Dx] = ssdata(RMorigx_plant .* gI_mp_zx);
-[Ay, By, Cy ,Dy] = ssdata(RMorigy_plant .* gI_mp_zy);
+[Ax, Bx, Cx ,Dx] = ssdata(RMorigx .* gI_mp_zx);
+[Ay, By, Cy ,Dy] = ssdata(RMorigy .* gI_mp_zy);
 [Acx, Bcx, Ccx, Dcx] = ssdata(-(Kx/network_scaling) .* c_zx);
 [Acy, Bcy, Ccy, Dcy] = ssdata(-(Ky/network_scaling) .* c_zy);
 

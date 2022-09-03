@@ -1,8 +1,15 @@
-function [Sminmax_x, Sminmax_y] = get_IMC_sensitivity_standard_config(RMorigx, RMorigy, bw, w_Hz, n_delay)
+function [Sminmax_x, Sminmax_y] = get_IMC_sensitivity_standard_config(RMorigx, RMorigy, bw, w_Hz, n_delay,...
+    RMorigx_plant, RMorigy_plant)
 
 addpath('..')
 if ~exist('n_delay','var')
     n_delay = 8;
+end
+if ~exist('RMorigx_plant','var') || isempty(n_delay)
+    RMorigx_plant = RMorigx;
+end
+if ~exist('RMorigy_plant','var') || isempty(n_delay)
+    RMorigy_plant = RMorigy;
 end
 plot_bode = false;
 
@@ -14,6 +21,8 @@ plot_bode = false;
 
 RMx = RMorigx(id_to_bpm_x, id_to_cm_x);
 RMy = RMorigy(id_to_bpm_y, id_to_cm_y);
+RMxp = RMorigx_plant(id_to_bpm_x, id_to_cm_x);
+RMyp = RMorigy_plant(id_to_bpm_y, id_to_cm_y);
 
 ny_x = length(id_to_bpm_x);
 ny_y = length(id_to_bpm_y);
@@ -83,8 +92,8 @@ for i = 1 : nw
     Cx = Kx*cx_w(i);
     Cy = Ky*cy_w(i);
     
-    Px = RMx*gx_w(i);
-    Py = RMy*gy_w(i);
+    Px = RMxp*gx_w(i);
+    Py = RMyp*gy_w(i);
     
     S_matx = inv(I_x+Px*Cx);
     S_maty = inv(I_y+Py*Cy);

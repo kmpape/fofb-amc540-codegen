@@ -1,4 +1,4 @@
-function [fs, S] = get_sensitivity_estimate(Y, D, nfft, Fs)
+function [fs, S] = get_sensitivity_estimate(Y, D, nfft, Fs, win)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Use the Welch method to obtain an estimate of the sensitivity Y./D      %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

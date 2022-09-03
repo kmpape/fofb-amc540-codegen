@@ -12,7 +12,7 @@ function [fs, psd, cs] = get_all_psd(Y, nfft, F_S)
     % Psd = zeros(n_y, numfreqs);
 
     for iy = 1 : n_y
-        [fs, psd(iy, :), cs(iy, :)] = mypsd(Y(:,iy), nfft, F_S);
+        [fs, psd(iy, :), cs(iy, :)] = mypsd2(Y(:,iy), nfft, F_S);
     end
 end
 
