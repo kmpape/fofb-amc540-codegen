@@ -55,7 +55,7 @@ T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
 bw_ally = 1/(n_delay*Ts);%176*2*pi; % overall desired bandwidth [rad/s]
-bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_sy = 50*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
 
@@ -64,8 +64,8 @@ qf_zx = c2d((T_tiso_mpx - T_siso_mpx) / tf_DIx, Ts, 'zoh');
 qs_zy = c2d(T_siso_mpy / tf_DIy, Ts, 'zoh');
 qf_zy = c2d((T_tiso_mpy - T_siso_mpy) / tf_DIy, Ts, 'zoh');
 
-%% GSVD
-mu = 0.1;
+% GSVD
+mu = 1;
 
 [Us,Uf,X,C,S] = gsvd(Rsx', Rfx');
 Ss = C';
@@ -88,7 +88,7 @@ Psy = -G\Rsy;
 Pfy = -G\Rfy;
 
 w_Hz = logspace(-1,3,100);
-get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bw_sx, bw_allx, n_delay, w_Hz, true, n_delay, mu);
+get_GSVD_IMC_sensitivity_v2(RMorigx, RMorigy, bw_sx, bw_allx, bw_sy, bw_ally, n_delay, w_Hz, true, n_delay, mu);
 
 %% Code generation
 n_cores = 4;
