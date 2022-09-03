@@ -22,7 +22,6 @@
 #pragma DATA_ALIGN(DTF_gs_u7, 64)
 #pragma DATA_ALIGN(DTF_gs_u8, 64)
 #pragma DATA_ALIGN(DTF_gs_u9, 64)
-#pragma DATA_ALIGN(DTF_gs_u10, 64)
 #pragma SET_DATA_SECTION(".gsvd_gs")
 #endif // SOC_C6678
 DTF_gs_ARR_TYPE DTF_gs_y0[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
@@ -37,7 +36,6 @@ DTF_gs_ARR_TYPE DTF_gs_u6[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
 DTF_gs_ARR_TYPE DTF_gs_u7[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
 DTF_gs_ARR_TYPE DTF_gs_u8[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
 DTF_gs_ARR_TYPE DTF_gs_u9[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
-DTF_gs_ARR_TYPE DTF_gs_u10[DTF_gs_LEN] = {(DTF_gs_ARR_TYPE)0.0};
 #ifdef SOC_C6678
 #pragma SET_DATA_SECTION()
 #endif // SOC_C6678
@@ -59,7 +57,6 @@ DTF_gs_ARR_TYPE *DTF_gs_u6_ptr = DTF_gs_u6;
 DTF_gs_ARR_TYPE *DTF_gs_u7_ptr = DTF_gs_u7;
 DTF_gs_ARR_TYPE *DTF_gs_u8_ptr = DTF_gs_u8;
 DTF_gs_ARR_TYPE *DTF_gs_u9_ptr = DTF_gs_u9;
-DTF_gs_ARR_TYPE *DTF_gs_u10_ptr = DTF_gs_u10;
 #ifdef SOC_C6678
 #pragma SET_DATA_SECTION()
 #endif // SOC_C6678
@@ -80,8 +77,7 @@ DTF_gs_ARR_TYPE DTF_gs_cu5 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu6 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu7 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu8 = (DTF_gs_ARR_TYPE)0.0000000000000000;
-DTF_gs_ARR_TYPE DTF_gs_cu9 = (DTF_gs_ARR_TYPE)0.0000000000000000;
-DTF_gs_ARR_TYPE DTF_gs_cu10 = (DTF_gs_ARR_TYPE)0.2695973089513544;
+DTF_gs_ARR_TYPE DTF_gs_cu9 = (DTF_gs_ARR_TYPE)0.2695973089513544;
 #else
 DTF_gs_ARR_TYPE DTF_gs_cy1 = (DTF_gs_ARR_TYPE)0.6441504439754081;
 DTF_gs_ARR_TYPE DTF_gs_cu0 = (DTF_gs_ARR_TYPE)0.0000000000000000;
@@ -93,8 +89,7 @@ DTF_gs_ARR_TYPE DTF_gs_cu5 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu6 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu7 = (DTF_gs_ARR_TYPE)0.0000000000000000;
 DTF_gs_ARR_TYPE DTF_gs_cu8 = (DTF_gs_ARR_TYPE)0.0000000000000000;
-DTF_gs_ARR_TYPE DTF_gs_cu9 = (DTF_gs_ARR_TYPE)0.0000000000000000;
-DTF_gs_ARR_TYPE DTF_gs_cu10 = (DTF_gs_ARR_TYPE)0.3558495560245918;
+DTF_gs_ARR_TYPE DTF_gs_cu9 = (DTF_gs_ARR_TYPE)0.3558495560245918;
 #endif // XDIR
 #ifdef SOC_C6678
 #pragma SET_DATA_SECTION()
@@ -123,8 +118,7 @@ void DTF_gs_swap_y(void)
 
 void DTF_gs_swap_u(void)
 {
-	DTF_gs_ARR_TYPE* tmp_u10_ptr = DTF_gs_u10_ptr;
-	DTF_gs_u10_ptr = DTF_gs_u9_ptr;
+	DTF_gs_ARR_TYPE* tmp_u9_ptr = DTF_gs_u9_ptr;
 	DTF_gs_u9_ptr = DTF_gs_u8_ptr;
 	DTF_gs_u8_ptr = DTF_gs_u7_ptr;
 	DTF_gs_u7_ptr = DTF_gs_u6_ptr;
@@ -134,7 +128,7 @@ void DTF_gs_swap_u(void)
 	DTF_gs_u3_ptr = DTF_gs_u2_ptr;
 	DTF_gs_u2_ptr = DTF_gs_u1_ptr;
 	DTF_gs_u1_ptr = DTF_gs_u0_ptr;
-	DTF_gs_u0_ptr = tmp_u10_ptr;
+	DTF_gs_u0_ptr = tmp_u9_ptr;
 }
 
 
@@ -157,8 +151,7 @@ void DTF_gs_execute(void)
 			//+ DTF_gs_cu6 * DTF_gs_u6_ptr[i]//coefficient is zero
 			//+ DTF_gs_cu7 * DTF_gs_u7_ptr[i]//coefficient is zero
 			//+ DTF_gs_cu8 * DTF_gs_u8_ptr[i]//coefficient is zero
-			//+ DTF_gs_cu9 * DTF_gs_u9_ptr[i]//coefficient is zero
-			+ DTF_gs_cu10 * DTF_gs_u10_ptr[i], DTF_gs_MAXVAL);
+			+ DTF_gs_cu9 * DTF_gs_u9_ptr[i], DTF_gs_MAXVAL);
 	}
 
 	DTF_gs_swap_u();
@@ -183,7 +176,6 @@ void DTF_gs_init(void)
 		DTF_gs_u7_ptr[i] = 0.0;
 		DTF_gs_u8_ptr[i] = 0.0;
 		DTF_gs_u9_ptr[i] = 0.0;
-		DTF_gs_u10_ptr[i] = 0.0;
 	}
 }
 

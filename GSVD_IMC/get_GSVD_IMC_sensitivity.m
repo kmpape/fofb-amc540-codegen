@@ -99,7 +99,7 @@ if false
     title('Output Sensitivity');
 end
     
-if plot_bode
+if false
     figure;
     bodeplot(qsx, qfx, qsy, qfy, bode_opt);
     axes_handles = findall(gcf, 'type', 'axes');

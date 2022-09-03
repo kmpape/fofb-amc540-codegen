@@ -35,7 +35,7 @@ nf = length(fast_to_id);
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
-n_delay = 9; % number of delay time steps [-]
+n_delay = 8; % number of delay time steps [-]
 z = tf('z');
 s = tf('s');
 aIx = 2*pi*500;
@@ -49,12 +49,12 @@ gI_mp_zy = c2d(tf_DIy, Ts, 'zoh');
 minus_one = -1;
 
 %% Mid-Ranging IMC
-bw_allx = 176*2*pi; % overall desired bandwidth [rad/s]
-bw_sx = 10*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_allx = 1/(n_delay*Ts);%176*2*pi; % overall desired bandwidth [rad/s]
+bw_sx =  50*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
-bw_ally = 176*2*pi; % overall desired bandwidth [rad/s]
+bw_ally = 1/(n_delay*Ts);%176*2*pi; % overall desired bandwidth [rad/s]
 bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
@@ -65,11 +65,12 @@ qs_zy = c2d(T_siso_mpy / tf_DIy, Ts, 'zoh');
 qf_zy = c2d((T_tiso_mpy - T_siso_mpy) / tf_DIy, Ts, 'zoh');
 
 %% GSVD
+mu = 0.1;
+
 [Us,Uf,X,C,S] = gsvd(Rsx', Rfx');
 Ss = C';
 Sf = S';
-Ff = X*pinv(X*blkdiag(eye(rank(Rfx)), zeros(ns-rank(Rfx))));  
-mu = 1;
+Ff = X*pinv(X*blkdiag(eye(rank(Rfx)), zeros(ns-rank(Rfx))));
 G = X*((X'*X+mu*eye(ny))\X');
 Ksx = -(Us*inv(Ss)/X)*G;
 Kfx = -((Uf*pinv(Sf)/X)*Ff)*G;
@@ -79,13 +80,15 @@ Pfx = -G\Rfx;
 [Us,Uf,X,C,S] = gsvd(Rsy', Rfy');
 Ss = C';
 Sf = S';
-Ff = X*pinv(X*blkdiag(eye(rank(Rfy)), zeros(ns-rank(Rfy)))); 
-mu = 1;
+Ff = X*pinv(X*blkdiag(eye(rank(Rfy)), zeros(ns-rank(Rfy))));
 G = X*((X'*X+mu*eye(ny))\X');
 Ksy = -(Us*inv(Ss)/X)*G;
 Kfy = -((Uf*pinv(Sf)/X)*Ff)*G;
 Psy = -G\Rsy;
 Pfy = -G\Rfy;
+
+w_Hz = logspace(-1,3,100);
+get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bw_sx, bw_allx, n_delay, w_Hz, true, n_delay, mu);
 
 %% Code generation
 n_cores = 4;
