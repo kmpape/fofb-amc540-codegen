@@ -153,7 +153,7 @@ for pick_dir = 1:2
 
     %% Get test data
     n_samples = 1000;
-    doff = ones(TOT_BPM, n_samples)*10;
+    doff = ones(TOT_BPM, n_samples);
     SOFB_setp = 0.9*SOFB_setpoints(id_to_cm)';
     SOFB_setp(SOFB_setp>u_max) = u_max(SOFB_setp>u_max);
     SOFB_setp(SOFB_setp<-u_max) = -u_max(SOFB_setp<-u_max);
