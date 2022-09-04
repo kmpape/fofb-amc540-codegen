@@ -3,7 +3,7 @@ function [y_sim,u_sim,...
     fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc(...
             n_samples, n_delay, dist,...
             Ap, Bp, Cp,... % Plant
-            Ao, Bo, Co, Ad, Cd, Lx8_obs, Lxd_obs,... % Observer
+            Ao, Bo, Co, Ad, Cd, LxN_obs, Lxd_obs,... % Observer
             J_MPC, q_mat, beta_fgm,... % FGM
             u_max, u_rate,...
             id_to_bpm, id_to_cm,...
@@ -11,7 +11,7 @@ function [y_sim,u_sim,...
             SOFB_setp)
         
 %%
-assert(n_delay == 8);
+assert((n_delay == 8)||n_delay==9);
 use_single = true;
 hil_mode = true;
 
@@ -37,15 +37,17 @@ if use_single == true
     x2_obs_old=single(zeros(nx_obs,1)); x3_obs_old=single(zeros(nx_obs,1));
     x4_obs_old=single(zeros(nx_obs,1)); x5_obs_old=single(zeros(nx_obs,1));
     x6_obs_old=single(zeros(nx_obs,1)); x7_obs_old=single(zeros(nx_obs,1));
+    x8_obs_old=single(zeros(nx_obs,1));
     xd_obs_old=single(zeros(ny_obs,1));
     
     Apow1 = single(Ao.^1);   Apow2 = single(Ao.^2);
     Apow3 = single(Ao.^3);   Apow4 = single(Ao.^4);
     Apow5 = single(Ao.^5);   Apow6 = single(Ao.^6);
     Apow7 = single(Ao.^7);   Apow8 = single(Ao.^8);
+    Apow9 = single(Ao.^9);
     Ao = single(Ao);      Bo = single(Bo);  Co = single(Co);
     Ad = single(Ad);      Cd = single(Cd);
-    Lx8_obs = single(Lx8_obs);  Lxd_obs = single(Lxd_obs);
+    LxN_obs = single(LxN_obs);  Lxd_obs = single(Lxd_obs);
     
     obs_y = single(zeros(ny_obs,n_samples));
     obs_u = single(zeros(nu_obs,n_samples));
@@ -61,15 +63,17 @@ else
     x2_obs_old=double(zeros(nx_obs,1)); x3_obs_old=double(zeros(nx_obs,1));
     x4_obs_old=double(zeros(nx_obs,1)); x5_obs_old=double(zeros(nx_obs,1));
     x6_obs_old=double(zeros(nx_obs,1)); x7_obs_old=double(zeros(nx_obs,1));
+    x8_obs_old=double(zeros(nx_obs,1));
     xd_obs_old=double(zeros(ny_obs,1));
     
     Apow1 = double(Ao.^1);   Apow2 = double(Ao.^2);
     Apow3 = double(Ao.^3);   Apow4 = double(Ao.^4);
     Apow5 = double(Ao.^5);   Apow6 = double(Ao.^6);
     Apow7 = double(Ao.^7);   Apow8 = double(Ao.^8);
+    Apow9 = double(Ao.^9);
     Ao = double(Ao);      Bo = double(Bo);  Co = double(Co);
     Ad = double(Ad);      Cd = double(Cd);
-    Lx8_obs = double(Lx8_obs);  Lxd_obs = double(Lxd_obs);
+    LxN_obs = double(LxN_obs);  Lxd_obs = double(Lxd_obs);
     
 end
 
@@ -123,21 +127,39 @@ for k = 1:1:n_samples
         x6_obs_new = x5_obs_old;
         x7_obs_new = x6_obs_old;
         x8_obs_new = x7_obs_old;
+        if (n_delay==9); x9_obs_new = x8_obs_old; end
 
         % Observer - measurement update
-        delta_y = y_meas - Co*x8_obs_new - Cd*xd_obs_new;
-        delta_x8 = Lx8_obs * delta_y;
+        if (n_delay==9)
+            delta_y = y_meas - Co*x9_obs_new - Cd*xd_obs_new;
+        else
+            delta_y = y_meas - Co*x8_obs_new - Cd*xd_obs_new;
+        end
+        delta_xN = LxN_obs * delta_y;
         delta_xd = Lxd_obs * delta_y;
         xd_obs_new = xd_obs_new + delta_xd;         % -> result
-        x8_obs_new = x8_obs_new + delta_x8;                
-        x7_obs_new = x7_obs_new + Apow1 * delta_x8;
-        x6_obs_new = x6_obs_new + Apow2 * delta_x8;
-        x5_obs_new = x5_obs_new + Apow3 * delta_x8;
-        x4_obs_new = x4_obs_new + Apow4 * delta_x8;
-        x3_obs_new = x3_obs_new + Apow5 * delta_x8;
-        x2_obs_new = x2_obs_new + Apow6 * delta_x8;
-        x1_obs_new = x1_obs_new + Apow7 * delta_x8; 
-        x0_obs_new = x0_obs_new + Apow8 * delta_x8; % -> result
+        if (n_delay==9)
+            x9_obs_new = x9_obs_new + delta_xN;      
+            x8_obs_new = x8_obs_new + Apow1 * delta_xN;
+            x7_obs_new = x7_obs_new + Apow2 * delta_xN;
+            x6_obs_new = x6_obs_new + Apow3 * delta_xN;
+            x5_obs_new = x5_obs_new + Apow4 * delta_xN;
+            x4_obs_new = x4_obs_new + Apow5 * delta_xN;
+            x3_obs_new = x3_obs_new + Apow6 * delta_xN;
+            x2_obs_new = x2_obs_new + Apow7 * delta_xN;
+            x1_obs_new = x1_obs_new + Apow8 * delta_xN; 
+            x0_obs_new = x0_obs_new + Apow9 * delta_xN; % -> result
+        else
+            x8_obs_new = x8_obs_new + delta_xN;                
+            x7_obs_new = x7_obs_new + Apow1 * delta_xN;
+            x6_obs_new = x6_obs_new + Apow2 * delta_xN;
+            x5_obs_new = x5_obs_new + Apow3 * delta_xN;
+            x4_obs_new = x4_obs_new + Apow4 * delta_xN;
+            x3_obs_new = x3_obs_new + Apow5 * delta_xN;
+            x2_obs_new = x2_obs_new + Apow6 * delta_xN;
+            x1_obs_new = x1_obs_new + Apow7 * delta_xN; 
+            x0_obs_new = x0_obs_new + Apow8 * delta_xN; % -> result
+        end
         
         xd_obs_old = xd_obs_new;
         x0_obs_old = x0_obs_new;
@@ -148,6 +170,7 @@ for k = 1:1:n_samples
         x5_obs_old = x5_obs_new;
         x6_obs_old = x6_obs_new;
         x7_obs_old = x7_obs_new;
+        if (n_delay==9); x8_obs_old = x8_obs_new; end
         
         obs_x0(:,k-n_delay) = x0_obs_new;
         obs_xd(:,k-n_delay) = xd_obs_new;

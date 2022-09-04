@@ -7,7 +7,7 @@ addpath('..')
 do_codegen = 1; % print files
 fname_RM = '../ORMS/GoldenBPMResp_DIAD.mat';
 folder_out = 'out/'; % output folder for codegen
-n_delay = 8;
+n_delay = 9;
 
 %% Hardlimits
 load('../ORMS/correctors.mat');
@@ -50,6 +50,22 @@ if ~exist(fname,'file')
 else
     load(fname);
 end
+
+%% Hard-coded data
+fprintf('\n#define OBS_delay           (%d) // HARDCODED. CAN BE 8 or 9.\n', n_delay)
+fprintf('\n#if (XDIR == 1)\n')
+fprintf('const obs_float OBS_Ax = %.16f;\n',Ao_x(1,1))
+fprintf('const obs_float OBS_Bx = %.16f;\n',Bo_x(1,1))
+for j = 1:9
+    fprintf('const obs_float OBS_Ax_pow_%d = %.16f;\n', j, Ao_x(1,1)^j)
+end
+fprintf('#else\n')
+fprintf('const obs_float OBS_Ax = %.16f;\n',Ao_y(1,1))
+fprintf('const obs_float OBS_Bx = %.16f;\n',Bo_y(1,1))
+for j = 2:9
+    fprintf('const obs_float OBS_Ax_pow_%d = %.16f;\n', j, Ao_y(1,1)^j)
+end
+fprintf('#endif\n')
 
 %%
 pick_dirs = {'horizontal','vertical'};
