@@ -13,11 +13,12 @@ gen_filter_unit_test_data = 0;
 gen_matvec_mpy_unit_test_data = 0; 
 use_PYTHON_parameter = 0;
 
-sr_config_choice = 3;
+sr_config_choice = 5;
 
 FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
 V4_CONFIG   = 4; % 03.08.2022 SR config
+V5_CONFIG   = 5; % 03.08.2022 SR config
 
 %% Configure Diamond-I Storage Ring
 load(fname_RM);
@@ -48,6 +49,10 @@ elseif (sr_config_choice == FULL_CONFIG)
     n_cores = 6;
 elseif (sr_config_choice == V4_CONFIG) % use same storage ring config as GSVD-IMC
     [id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy);
+    n_cores = 6;
+elseif (sr_config_choice == V5_CONFIG) % use same storage ring config as MPC
+    square_config = true;
+    [id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v5(RMorigx,RMorigy,square_config);
     n_cores = 6;
 else
     assert(0);
