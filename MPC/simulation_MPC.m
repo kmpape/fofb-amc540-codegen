@@ -9,10 +9,13 @@ close all
 clc
 %% Options
 fname_RM = '../ORMS/GoldenBPMResp_DIAD.mat';
+fname_X = '../../DATA/04092022_135252_data_X.mat';
+fname_Y = '../../DATA/04092022_135252_data_Y.mat';
 pick_dir = 2;
 dirs = {'horizontal','vertical'};
 pick_direction = dirs{pick_dir};
 do_step = false;
+sim_IMC = false;
 
 %% Hardlimits
 load('../ORMS/correctors.mat');
@@ -27,7 +30,8 @@ RMorigy = Rmat(4).Data(:,:);%  * 1e6; % RM(4) eq to RM(2,2)
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
 [TOT_BPM, TOT_CM] = size(RMorigx);
-[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy,true);
+square_config = true;
+[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v5(RMorigx,RMorigy,square_config);
 RMx = RMorigx(id_to_bpm_x,id_to_cm_x);
 RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 
@@ -35,8 +39,8 @@ RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 n_delay = 9;
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time [s]
-fname = sprintf('mpc_data_02092022_nd%d.mat',n_delay);
-if true %~exist(fname,'file')
+fname = sprintf('mpc_data_13092022_nd%d.mat',n_delay);
+if ~exist(fname,'file')
     print_msg = false;
     [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
           Kfd_x, Kfx_x, ~, ~, P_x, Rlqr_x, Qlqr_x,...
@@ -118,9 +122,9 @@ if do_step
     don = doff;    
 else
     if strcmp(pick_direction, 'vertical')
-        fname = '/home/idris/Documents/EngSci/Diamond/Test_Data_Mar_2022/26032022_092841_data_Y.mat';
+        fname = fname_Y;
     else
-        fname = '/home/idris/Documents/EngSci/Diamond/Test_Data_Mar_2022/26032022_092841_data_X.mat';
+        fname = fname_X;
     end
     inds = 1:10000;
     load(fname);
@@ -145,9 +149,8 @@ SOFB_setp = SOFB_setpoints(id_to_cm)';
 SOFB_setp(SOFB_setp>u_max) = u_max(SOFB_setp>u_max);
 SOFB_setp(SOFB_setp<-u_max) = -u_max(SOFB_setp<-u_max);
 ss_awr = ss(sys_awr);
-[y_sim,u_sim,...
-    obs_y,obs_u,obs_x0,obs_xd,...
-    fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc(...
+if false
+[y_sim,u_sim,obs_y,obs_u,obs_x0,obs_xd,fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc_v2(...
             n_samples, n_delay, doff,...
             Ap, Bp, Cp, ... % Plant
             Ao, Bo, Co, Ad, Cd, Lx8_obs, Lxd_obs,... % Observer
@@ -155,18 +158,20 @@ ss_awr = ss(sys_awr);
             u_max , u_rate,... % FGM
             id_to_bpm, id_to_cm,...
             ss_awr.A,ss_awr.B,ss_awr.C,...
-            SOFB_setp);
-if false
-save('tmp.mat','n_samples', 'n_delay', 'doff',...
-            'Ap', 'Bp', 'Cp', ... % Plant
-            'Ao', 'Bo', 'Co', 'Ad', 'Cd', 'Lx8_obs', 'Lxd_obs',... % Observer
-            'J_mpc' , 'q_mat', 'beta_fgm',... % FGM
-            'u_max' , 'u_rate',... % FGM
-            'id_to_bpm', 'id_to_cm',...
-            'SOFB_setp');
+            SOFB_setp,false);
+else
+    [y_sim,u_sim,obs_y,obs_u,obs_x0,obs_xd,fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc(...
+                n_samples, n_delay, doff,...
+                Ap, Bp, Cp, ... % Plant
+                Ao, Bo, Co, Ad, Cd, Lx8_obs, Lxd_obs,... % Observer
+                J_mpc , q_mat, beta_fgm,... % FGM
+                u_max , u_rate,... % FGM
+                id_to_bpm, id_to_cm,...
+                ss_awr.A,ss_awr.B,ss_awr.C,...
+                SOFB_setp,false);
 end
 
-if true == true
+if sim_IMC
     addpath('../IMC')
     
     bw = 1/(n_delay*Ts);
@@ -191,29 +196,37 @@ scale_u = 1e-3;
 
 y_awr = lsim(sys_awr,u_sim(1:length(t),id_to_cm)*scale_u,t);
 
-if true == true
-    figure;
-    subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance MPC');
-    subplot(2,2,2); plot(y_sim(:,id_to_bpm)); title('Output MPC');
-    subplot(2,2,3); plot(u_sim*scale_u); title('Input MPC');
-    subplot(2,2,4); plot(u_sim(1:length(t),id_to_cm)*scale_u-y_awr); title('AWR MPC');
+figure;
+subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance MPC');
+subplot(2,2,2); plot(y_sim(:,id_to_bpm)); title('Output MPC');
+subplot(2,2,3); plot(u_sim*scale_u); title('Input MPC');
+subplot(2,2,4); plot(u_sim(1:length(t),id_to_cm)*scale_u-y_awr); title('AWR MPC');
     
+if sim_IMC
     figure;
     subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance IMC');
     subplot(2,2,2); plot(y_sim_imc(:,id_to_bpm)); title('Output IMC');
     subplot(2,2,3); plot(u_sim_imc*scale_u); title('Input IMC');
 end
-asdf
 
-
-if true == false
-    b = load('v2.mat');
-    figure;
-    subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance');
-    subplot(2,2,2); plot(y_sim(:,1)-b.y_sim(:,1)); title('Output');
-    subplot(2,2,3); plot(u_sim(1:end-1,1)/1000-b.u_sim(:,1)/1000); title('Input');
-    subplot(2,2,4); plot(u_sim(1:length(t),:)/1000-y_awr/1000); title('AWR');
+% Sensitivity
+inds_ss = 1000:n_samples;
+[Sfiltered, Sorig, w_Hz] = estim_sensitivity(y_sim(inds_ss,id_to_bpm)', doff(id_to_bpm,inds_ss), length(inds_ss), 1/Ts);
+fname = sprintf('mpc_data_02092022_nd%d.mat',n_delay);
+theo_data = load(strrep(fname,'.mat','_analysis.mat'));
+if strcmp(pick_direction, 'vertical')
+    Stheo = theo_data.Slqr_y;
+else
+    Stheo = theo_data.Slqr_x;
 end
+Smin_theo = 20*log10(abs(min(Stheo,[],2)));
+Smax_theo = 20*log10(abs(max(Stheo,[],2)));
+
+figure;
+semilogx(theo_data.w_Hz,Smin_theo,'k',theo_data.w_Hz,Smax_theo,'k'); hold on;
+semilogx(w_Hz,20*log10(abs(Sorig(:,1))),'b',w_Hz, Sfiltered(:,100),'r');
+grid on;
+asdf
 %%
 y_simtmp = y_sim;
 y_simtmp(:,bad_bpm) = [];

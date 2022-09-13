@@ -19,7 +19,11 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
     Fs = 10*10^3; % sample frequency [Hz]
     Ts = 1/Fs; % sample time [s]
     %nd = 9; % number of delay samples [-]
-
+    
+    %% Frequencies for Sensitivity
+    w_Hz = logspace(-2,4,300);
+    w_Hz(w_Hz >= 5000) = [];
+    
     %% Produce Gains for X & Y directions
     mu = 1;
     z = tf('z', Ts);
@@ -44,6 +48,9 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
         Kdtilde = zeros(ny,1);
         Rxtilde = zeros(ny,1);
         Ptilde = zeros(ny,1);
+        sensitivity_lqr = zeros(length(w_Hz),ny);
+        sensitivity_imc = zeros(length(w_Hz),ny);
+        poles_imc = zeros(ny,1);
         for imode = 1:ny
             I = eye(nd+2);
             sval = SR(imode,imode);
@@ -58,6 +65,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
                 fprintf("%s, IMC closed loop sensitivity pole = %.4f Hz (mode = %d)\n",...
                     dirs{i}, -log(pi_imc)/2/pi/Ts, imode);
             end
+            poles_imc(imode) = -log(pi_imc)/2/pi/Ts;
             Kdtilde(imode) = 1-pi_imc;
 
             % State-Space with delay
@@ -72,10 +80,37 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             % x[n+1] = Ax[n] + Bu[n]
             Qlqr = diag([1,zeros(1,nd)]);
             Rlqr = sqrt((mu+sval^2)/sval^2);
-            [Kc,Plqr,~] = dlqr(Ap,Bp,Qlqr,Rlqr,0);
-            Kxtilde(imode) = Kc(1);
+            if false
+                [Kc,Plqr,~] = dlqr(Ap,Bp,Qlqr,Rlqr,0);
+                Kxtilde(imode) = Kc(1);
+            else
+                [Kc,Plqr,~] = dlqr(a,1-a,1,Rlqr,0);
+                Kxtilde(imode) = Kc;
+            end
             Rxtilde(imode) = Rlqr;
             Ptilde(imode) = Plqr(1,1);
+            
+            Ao = blkdiag(Ap,1);
+            Bo = [Bp; 0];
+            Co = [zeros(1,nd),sval, 1];
+            Kf = [zeros(nd+1,1); Kdtilde(imode)];
+            Kc = [Kxtilde(imode),zeros(1,nd),(1+Kxtilde(imode))/sval];
+            I = eye(nd+2);
+            c_lqr = ss((Ao-Bo*Kc)*(I-Kf*Co),(Ao-Bo*Kc)*Kf,Kc*(I-Kf*Co),Kc*Kf,Ts);
+            OL = series(g,c_lqr);
+            CL = 1/(1+OL);
+            CL_w = freqresp(CL,w_Hz,'Hz'); CL_w = abs(CL_w(:));
+            sensitivity_lqr(:,imode) = CL_w;
+            tmp = freqresp(1/(1+g*c_imc),w_Hz,'Hz'); tmp = abs(tmp(:));
+            sensitivity_imc(:,imode) = tmp;
+            
+            if false
+                figure; bode(OL); grid on;
+                figure; 
+                semilogx(w_Hz,20*log10(CL_w),'b'); hold on;
+                semilogx(w_Hz,20*log10(tmp),'r');
+                grid on;
+            end
         end
 
         if i==1
@@ -86,6 +121,9 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             P_x = VR*diag(Ptilde)*VR';
             Rlqr_x = VR*diag(Rxtilde)*VR';
             Qlqr_x = eye(nu_x);
+            Slqr_x = sensitivity_lqr;
+            Simc_x = sensitivity_imc;
+            poles_imc_x = poles_imc;
         else
             Kfx_y = zeros(nu_y,ny_y);
             Kfd_y = UR*diag(Kdtilde)*UR';
@@ -94,6 +132,9 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             P_y = VR*diag(Ptilde)*VR';
             Rlqr_y = VR*diag(Rxtilde)*VR';
             Qlqr_y = eye(nu_y);
+            Slqr_y = sensitivity_lqr;
+            Simc_y = sensitivity_imc;
+            poles_imc_y = poles_imc;
         end
     end
 
@@ -125,6 +166,8 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
                    'Kfd_x', 'Kfx_x', 'Kcx_x', 'Kcd_x', 'P_x', 'Rlqr_x', 'Qlqr_x',...
                    'Ao_y', 'Bo_y', 'Co_y', 'Ap_y', 'Bp_y', 'Cp_y', 'Ad_y', 'Cd_y',...
                    'Kfd_y', 'Kfx_y', 'Kcx_y', 'Kcd_y', 'P_y', 'Rlqr_y', 'Qlqr_y');
+       save(strrep(fname,'.mat','_analysis.mat'), 'poles_imc_x', 'poles_imc_y',...
+            'w_Hz', 'Slqr_x', 'Simc_x', 'Slqr_y', 'Simc_y');
     end
 end
 

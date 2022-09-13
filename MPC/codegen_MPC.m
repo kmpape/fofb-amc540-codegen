@@ -29,7 +29,8 @@ RMorigy = Rmat(4).Data(:,:);%  * 1e6; % RM(4) eq to RM(2,2)
 assert(ny_x == ny_y);
 assert(nu_x == nu_y);
 [TOT_BPM, TOT_CM] = size(RMorigx);
-[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v4(RMorigx,RMorigy,true);
+square_config = true;
+[id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v5(RMorigx,RMorigy,square_config);
 RMx = RMorigx(id_to_bpm_x,id_to_cm_x);
 RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 
@@ -39,7 +40,7 @@ RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 %% Observer and Regulator
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time [s]
-fname = sprintf('mpc_data_02092022_nd%d.mat',n_delay);
+fname = sprintf('mpc_data_13092022_nd%d.mat',n_delay);
 if ~exist(fname,'file')
     print_msg = false;
     [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...

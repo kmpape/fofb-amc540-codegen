@@ -8,7 +8,10 @@ function [y_sim,u_sim,...
             u_max, u_rate,...
             id_to_bpm, id_to_cm,...
             A_awr, B_awr, C_awr,...
-            SOFB_setp)
+            SOFB_setp, ol_mode)
+if ~exist('ol_mode','var')
+    ol_mode = false;
+end
         
 %%
 assert((n_delay == 8)||n_delay==9);
@@ -94,7 +97,11 @@ MAX_ITER = 20;
 for k = 1:1:n_samples
 
     % Measurement
-    y_sim(:, k) = Cp*x_sim_new + dist(:, k);
+    if ~ol_mode
+        y_sim(:, k) = Cp*x_sim_new + dist(:, k);
+    else
+        y_sim(:, k) = dist(:, k);
+    end
 
     if k > n_delay
         if hil_mode == true

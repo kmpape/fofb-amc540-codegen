@@ -1,4 +1,4 @@
-function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity(RMorigx, RMorigy, bwsx, bwfx, bwsy, bwfy, n_delay, w_Hz, plot_bode, n_delay_plant, mu)
+function [Sminmax_x, Sminmax_y] = get_GSVD_IMC_sensitivity_v2(RMorigx, RMorigy, bwsx, bwfx, bwsy, bwfy, n_delay, w_Hz, plot_bode, n_delay_plant, mu)
 addpath('..')
 if ~exist('n_delay','var') || isempty(n_delay)
     n_delay = 8;
