@@ -139,8 +139,8 @@ if do_codegen == true
         [num_czx, den_czx] = tfdata(c_zx);
         [num_czy, den_czy] = tfdata(c_zy);
         % generate filter
-        generate_filter_from_TF_XY(folder_out, nu, num_czx{:}, den_czx{:}, 'IMC_DI',...
-            'double', gen_filter_unit_test_data, '.imc_DI', 64, 4.99, num_czy{:}, den_czy{:});
+        generate_filter_from_TF_XY_v2(folder_out, nu_x, num_czx{:}, den_czx{:}, 'IMC_DI',...
+            'double', gen_filter_unit_test_data, '.imc_DI', 64, 4.99, nu_y, num_czy{:}, den_czy{:});
         % generate_filter_from_TF_XY(foldername, vec_len, num_f, den_f, filter_name,...
              % filter_base_type, print_test_data, datasection, alignment, integrator_max, num_f2, den_f2)
         % print gain matrix
