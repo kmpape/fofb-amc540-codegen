@@ -209,15 +209,16 @@ for k = 1:1:n_samples
             z_new = max(lower_u, min(upper_u, t));
             out_global = (1+beta_fgm) * z_new - beta_fgm*z_old;
         end
-        fgm_out(:,k-n_delay) = out_global;
+        fgm_result = z_new; % new: use z_new instead of out_global
+        fgm_out(:,k-n_delay) = fgm_result;
         if hil_mode == true
-            out_global = round(out_global*1e6,0)/1e6;
+            fgm_result = round(fgm_result*1e6,0)/1e6;
         end
-        u_sim(id_to_cm,k) = double(out_global);
+        u_sim(id_to_cm,k) = double(fgm_result);
         
         % AWR
         x_awr_old = x_awr_new;
-        x_awr_new = A_awr*x_awr_old + B_awr*(double(out_global));
+        x_awr_new = A_awr*x_awr_old + B_awr*(double(fgm_result));
         y_awr = C_awr*x_awr_new;
     end
     
