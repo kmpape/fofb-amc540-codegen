@@ -3,19 +3,23 @@ addpath('/home/idris/Documents/EngSci/Matlab/models');
 addpath('/home/idris/Documents/EngSci/Matlab/simulink_models');
 addpath('/home/idris/Documents/EngSci/Matlab/osqp/osqp-0.4.1-matlab-linux64');
 addpath('/home/idris/Documents/EngSci/Matlab');
-
+addpath('..')
+asdf
 clear all
-close all
+%close all
 clc
 %% Options
 fname_RM = '../ORMS/GoldenBPMResp_DIAD.mat';
 fname_X = '../../DATA/04092022_135252_data_X.mat';
 fname_Y = '../../DATA/04092022_135252_data_Y.mat';
+fname_X = '../../DATA/04092022_135000_data_X.mat';
+fname_Y = '../../DATA/04092022_135000_data_Y.mat';
 pick_dir = 2;
 dirs = {'horizontal','vertical'};
 pick_direction = dirs{pick_dir};
 do_step = false;
 sim_IMC = false;
+use_FGM = true; % else use OSQP
 
 %% Hardlimits
 load('../ORMS/correctors.mat');
@@ -95,6 +99,8 @@ horizon = 1;
 u_rate_scalar = 1*1000;
 u_rate = u_rate_scalar*ones(nu,1);
 u_max = hardlimits(id_to_cm)*1000;
+y_max_scalar = 200;
+y_max = ones(length(id_to_bpm),1)*y_max_scalar;
 J_mpc = Bo'*P_mpc*Bo+R_mpc;
 S_sp_pinv_x = S_sp_pinv(1:nx,:);
 S_sp_pinv_u = S_sp_pinv(nx+1:end,:);
@@ -102,12 +108,14 @@ q_mat_x0 = Bo'*P_mpc*Ao;
 q_mat_xd = -[Bo'*P_mpc, R_mpc]*[S_sp_pinv_x; S_sp_pinv_u]*(-Cd);
 q_mat = [q_mat_x0, q_mat_xd];
 
-% Fast Gradient
-eigmax = max(eig(J_mpc)); 
-eigmin = min(eig(J_mpc));
-J_mpc = eye(size(J_mpc))-J_mpc/eigmax;
-beta_fgm = (sqrt(eigmax) - sqrt(eigmin)) / (sqrt(eigmax) + sqrt(eigmin));
-q_mat = [q_mat_x0, q_mat_xd]/eigmax;
+% Solver
+if use_FGM == true
+    eigmax = max(eig(J_mpc)); 
+    eigmin = min(eig(J_mpc));
+    J_mpc = eye(size(J_mpc))-J_mpc/eigmax;
+    beta_fgm = (sqrt(eigmax) - sqrt(eigmin)) / (sqrt(eigmax) + sqrt(eigmin));
+    q_mat = [q_mat_x0, q_mat_xd]/eigmax;
+end
 
 %% Rate limiter on VME processors
 a_awr = 2*2*pi;
@@ -138,6 +146,21 @@ else
     don(bad_bpm,:) = 0;
 end
 
+imode = 100;
+n_samples = 6000;
+if strcmp(pick_direction, 'vertical')
+    [UR,SR,VR] = svd(RMy);
+else
+    [UR,SR,VR] = svd(RMx);
+end
+mag_u = 10*1000;
+tmp = UR(:,imode)*SR(imode,imode)*mag_u;
+doff_tmp = zeros(TOT_BPM,1);
+doff_tmp(id_to_bpm) = tmp;
+doff = doff_tmp .* ones(1,n_samples);
+don = doff;
+y_max = ones(length(id_to_bpm),1)*850;
+
 %% Simulation
 endt = (n_samples*Ts)-Ts;
 Lsim = n_samples*Ts;
@@ -149,17 +172,7 @@ SOFB_setp = SOFB_setpoints(id_to_cm)';
 SOFB_setp(SOFB_setp>u_max) = u_max(SOFB_setp>u_max);
 SOFB_setp(SOFB_setp<-u_max) = -u_max(SOFB_setp<-u_max);
 ss_awr = ss(sys_awr);
-if false
-[y_sim,u_sim,obs_y,obs_u,obs_x0,obs_xd,fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc_v2(...
-            n_samples, n_delay, doff,...
-            Ap, Bp, Cp, ... % Plant
-            Ao, Bo, Co, Ad, Cd, Lx8_obs, Lxd_obs,... % Observer
-            J_mpc , q_mat, beta_fgm,... % FGM
-            u_max , u_rate,... % FGM
-            id_to_bpm, id_to_cm,...
-            ss_awr.A,ss_awr.B,ss_awr.C,...
-            SOFB_setp,false);
-else
+if use_FGM == true
     [y_sim,u_sim,obs_y,obs_u,obs_x0,obs_xd,fgm_x0,fgm_xd,fgm_u,fgm_out] = sim_mpc(...
                 n_samples, n_delay, doff,...
                 Ap, Bp, Cp, ... % Plant
@@ -167,7 +180,17 @@ else
                 J_mpc , q_mat, beta_fgm,... % FGM
                 u_max , u_rate,... % FGM
                 id_to_bpm, id_to_cm,...
-                ss_awr.A,ss_awr.B,ss_awr.C,...
+                ss_awr.A,ss_awr.B,ss_awr.C,ss_awr.D,...
+                SOFB_setp,false);
+else
+    [y_sim,u_sim] = sim_mpc_OSQP(...
+                n_samples, n_delay, doff,...
+                Ap, Bp, Cp, ... % Plant
+                Ao, Bo, Co, Ad, Cd, Lx8_obs, Lxd_obs,... % Observer
+                J_mpc , q_mat, y_max,... % FGM
+                u_max , u_rate,... % FGM
+                id_to_bpm, id_to_cm,...
+                ss_awr.A,ss_awr.B,ss_awr.C,ss_awr.D,...
                 SOFB_setp,false);
 end
 
@@ -197,10 +220,13 @@ scale_u = 1e-3;
 y_awr = lsim(sys_awr,u_sim(1:length(t),id_to_cm)*scale_u,t);
 
 figure;
-subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance MPC');
-subplot(2,2,2); plot(y_sim(:,id_to_bpm)); title('Output MPC');
-subplot(2,2,3); plot(u_sim*scale_u); title('Input MPC');
-subplot(2,2,4); plot(u_sim(1:length(t),id_to_cm)*scale_u-y_awr); title('AWR MPC');
+subplot(2,4,1); plot(doff(id_to_bpm,:)'); title('Disturbance');
+subplot(2,4,2); plot((UR'*doff(id_to_bpm,:))'); title('Disturbance Mode Space');
+subplot(2,4,3); plot(u_sim(:,id_to_cm)*scale_u); title('Input');
+subplot(2,4,4); plot(scale_u*u_sim(:,id_to_cm)*VR); title('Input Mode Space');
+subplot(2,4,5); plot(y_sim(:,id_to_bpm)); title('Output');
+subplot(2,4,6); plot(y_sim(:,id_to_bpm)*UR); title('Output Mode Space');
+subplot(2,4,7); plot(u_sim(1:length(t),id_to_cm)*scale_u-y_awr); title('Rate Limit');
     
 if sim_IMC
     figure;
