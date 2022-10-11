@@ -5,7 +5,7 @@ addpath('..')
 
 %% Options
 do_codegen = 1; % print files
-fname_RM = '../ORMS/GoldenBPMResp_DIAD.mat';
+fname_RM = '../ORMS/ORM_11.9.2022/GoldenBPMResp_I04.mat';
 folder_out = 'out/'; % output folder for codegen
 gen_ctr_test_data = 1;
 codegen_mc = 1; % switch between multicore (mc) or single-core code gen
@@ -18,7 +18,7 @@ sr_config_choice = 5;
 FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
 V4_CONFIG   = 4; % 03.08.2022 SR config
-V5_CONFIG   = 5; % 03.08.2022 SR config
+V5_CONFIG   = 5; % 13.09.2022 SR config
 
 %% Configure Diamond-I Storage Ring
 load(fname_RM);

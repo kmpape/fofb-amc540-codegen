@@ -50,7 +50,7 @@ for mm = 1 : run_ntimes
     for ii = 1 : nsamples
 
         % Measure Plant Output
-        if ~open_loop
+        if open_loop == false
             y_sim(:, ii) = C * x_sim_new + dist(:, ii);
         else
             y_sim(:, ii) = dist(:, ii);
