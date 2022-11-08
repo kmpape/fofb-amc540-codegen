@@ -28,9 +28,10 @@ function print_dense_C_matrix(fid, matrix, type, name, isconst, ...
                 end
             else
                 if (row == nrows) && (col == ncols)
-                    fprintf(fid, '(%s)%.18f};\n', type, matrix(row,col));
+                    % fprintf(fid, '(%s)%.18f};\n', type, matrix(row,col));
+                    fprintf(fid, '(%s)%.20E};\n', type, matrix(row,col));
                 else
-                    fprintf(fid, '(%s)%.18f, \n', type, matrix(row,col));
+                    fprintf(fid, '(%s)%.20E, \n', type, matrix(row,col));
                 end
             end
         end

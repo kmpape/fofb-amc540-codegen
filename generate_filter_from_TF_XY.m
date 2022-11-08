@@ -129,12 +129,14 @@ fprintf(fid_c, "#ifdef SOC_C6678\n");
 fprintf(fid_c, sprintf('#pragma SET_DATA_SECTION("%s")\n', datasection));
 fprintf(fid_c, "#endif // SOC_C6678\n");
 % DT_FILTER_ARR_TYPE DT_FILTER_cy1 = (DT_FILTER_ARR_TYPE)0.4;
-tmplate_y = '%s %scy%d = (%s)%.16f;\n';
+%tmplate_y = '%s %scy%d = (%s)%.16f;\n';
+tmplate_y = '%s %scy%d = (%s)%.20E;\n';
 fprintf(fid_c, "#if (%sXDIR == 1)\n", prefix);
 for i = 2 : n_den
     fprintf(fid_c, tmplate_y, ftype, prefix, i-1, ftype, -den_f(i));
 end
-tmplate_u = '%s %scu%d = (%s)%.16f;\n';
+%tmplate_u = '%s %scu%d = (%s)%.16f;\n';
+tmplate_u = '%s %scu%d = (%s)%.20E;\n';
 for i = 1 : n_num
     fprintf(fid_c, tmplate_u, ftype, prefix, i-1, ftype, num_f(i));
 end
