@@ -65,7 +65,7 @@ fprintf('#else\n')
 fprintf('const obs_float OBS_Ad = %.20E;\n',Ad_y(1,1))
 fprintf('const obs_float OBS_Ax = %.20E;\n',Ao_y(1,1))
 fprintf('const obs_float OBS_Bx = %.20E;\n',Bo_y(1,1))
-for j = 2:9
+for j = 1:9
     fprintf('const obs_float OBS_Ax_pow_%d = %.20E;\n', j, Ao_y(1,1)^j)
 end
 fprintf('#endif\n')

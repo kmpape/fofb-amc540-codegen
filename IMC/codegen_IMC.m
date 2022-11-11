@@ -87,19 +87,21 @@ gI_mp_zy = c2d(tf_DIy, Ts, 'zoh');
 minus_one = -1;
 
 %% IMC
+mu = 2.0;
+
 [U, S, V] = svd(RMx, 'econ');
-MU = 1.0*eye(ny_x);
+MU = mu*eye(ny_x);
 E = S / (S.^2+MU);
 Kx = V*E*U';
 
 [U, S, V] = svd(RMy, 'econ');
-MU = 1.0*eye(ny_y);
+MU = mu*eye(ny_y);
 E = S / (S.^2+MU);
 Ky = V*E*U';
 
 z = tf('z', Ts);
 s = tf('s');
-bw = 1/(n_delay*Ts);
+bw = 100*2*pi; % 1/(n_delay*Ts);
 abw = exp(-bw*Ts);
 T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
 
@@ -193,7 +195,7 @@ if do_codegen == true
                 RMorig = RMorigy;
                 gI_mp_z = gI_mp_zy;
             end
-            n_samples = 1000;
+            n_samples = 10000;
             [Utmp,~,~] = svd(RMorig);
             %doff = randn(TOT_BPM,1).*ones(1,n_samples);
             %doff = Utmp(:,20).*ones(1,n_samples);
