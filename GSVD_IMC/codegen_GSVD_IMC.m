@@ -55,7 +55,7 @@ T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
 bw_ally = 1/(n_delay*Ts);%176*2*pi; % overall desired bandwidth [rad/s]
-bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_sy = 50*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
 
