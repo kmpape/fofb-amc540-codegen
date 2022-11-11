@@ -24,6 +24,10 @@ ny = length(id_to_bpm);
 ns = length(slow_to_id);
 nf = length(fast_to_id);
 
+id_to_cm = sort(union(slow_to_id,fast_to_id), 'asc');
+Rx = RMorigx(id_to_bpm, id_to_cm);
+Ry = RMorigy(id_to_bpm, id_to_cm);
+
 %% Actuators
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time[s]
@@ -109,7 +113,6 @@ end
 % m_crit = size(Xx,1);
 % w_vec = [ones(m_crit,1); ones(size(Xx,1)-m_crit,1)/100];
 % W = UX * diag(w_vec) * UX' / sum(w_vec) * size(Xx,1);
-
 Ssx = C';
 Sfx = S';
 Ffx = Xx*pinv(Xx*blkdiag(eye(rank(Rfx)), zeros(ns-rank(Rfx))));  
@@ -123,7 +126,7 @@ Gx = Xx*((Xx'*Xx+mu*eye(ny))\Xx');
 [Usy,Ufy,Xy,C,S] = gsvd(Rsy', Rfy');
 Ssy = C';
 Sfy = S';
-Ffy = Xy*pinv(Xy*blkdiag(eye(rank(Rfy)), zeros(ns-rank(Rfy)))); 
+Ffy = Xy*pinv(Xy*blkdiag(eye(rank(Rfy)), zeros(ns-rank(Rfy))));
 
 Gy = Xy*((Xy'*Xy+mu*eye(ny))\Xy');
 % Ksy = -(Usy*inv(Ssy)/Xy)*Gy;
@@ -161,6 +164,14 @@ tmp_Qsy = Usy*inv(Ssy)/Xy;
 tmp_Qfy = Ufy*pinv(Sfy)/Xy;
 Sminmax_x = zeros(2,nw);
 Sminmax_y = zeros(2,nw);
+
+if true
+[URx,~,~] = svd(Rx);
+[URy,~,~] = svd(Ry);
+Smode_x = zeros(ny,nw);
+Smode_y = zeros(ny,nw);
+end
+
 I = eye(ny);
 for i = 1 : nw
     
@@ -181,6 +192,11 @@ for i = 1 : nw
     Sminmax_x(2,i) = max(svd(S_matx));
     Sminmax_y(1,i) = min(svd(S_maty));
     Sminmax_y(2,i) = max(svd(S_maty));
+    
+    if true
+        Smode_x(:,i) = vecnorm(URx'*S_matx*URx, 2, 2);
+        Smode_y(:,i) = vecnorm(URy'*S_maty*URy, 2, 2);
+    end
 end
 
 if plot_bode
@@ -192,8 +208,25 @@ if plot_bode
     subplot(1,2,2);
     semilogx(w_Hz, 20*log10(Sminmax_y(1,:)), 'r', w_Hz, 20*log10(Sminmax_y(2,:)), 'r', ...
         w_Hz, 20*log10(abs(S_sisoy_w)), 'b--', w_Hz, 20*log10(abs(S_tisoy_w)), 'b--');
-    title('Y')
-    
+    title('Y')    
+end
+
+if plot_bode
+    figure;
+    subplot(1,2,1);
+    h=surf(w_Hz, 1:1:ny, 20*log10(Smode_x));
+    view(0,90); set(h,'LineStyle','none'); set(gca,'xscale','log')
+    caxis([-80,5]);
+    xlim([w_Hz(1) w_Hz(end)]);
+    ylim([1 ny]);
+    colorbar; title('Mode Space - X');
+    subplot(1,2,2);
+    h=surf(w_Hz, 1:1:ny, 20*log10(Smode_y));
+    view(0,90); set(h,'LineStyle','none'); set(gca,'XScale','log');
+    caxis([-80,5]);
+    xlim([w_Hz(1) w_Hz(end)]);
+    ylim([1 ny]);
+    colorbar; title('Mode Space - Y');
 end
 
 end

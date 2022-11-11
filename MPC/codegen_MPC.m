@@ -40,7 +40,7 @@ RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 %% Observer and Regulator
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time [s]
-fname = sprintf('mpc_data_11102022_nd%d.mat',n_delay);
+fname = sprintf('mpc_data_11112022_nd%d.mat',n_delay);
 if ~exist(fname,'file')
     print_msg = false;
     [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
@@ -55,16 +55,18 @@ end
 %% Hard-coded data
 fprintf('\n#define OBS_delay           (%d) // HARDCODED. CAN BE 8 or 9.\n', n_delay)
 fprintf('\n#if (XDIR == 1)\n')
-fprintf('const obs_float OBS_Ax = %.16f;\n',Ao_x(1,1))
-fprintf('const obs_float OBS_Bx = %.16f;\n',Bo_x(1,1))
+fprintf('const obs_float OBS_Ad = %.20E;\n',Ad_x(1,1))
+fprintf('const obs_float OBS_Ax = %.20E;\n',Ao_x(1,1))
+fprintf('const obs_float OBS_Bx = %.20E;\n',Bo_x(1,1))
 for j = 1:9
-    fprintf('const obs_float OBS_Ax_pow_%d = %.16f;\n', j, Ao_x(1,1)^j)
+    fprintf('const obs_float OBS_Ax_pow_%d = %.20E;\n', j, Ao_x(1,1)^j)
 end
 fprintf('#else\n')
-fprintf('const obs_float OBS_Ax = %.16f;\n',Ao_y(1,1))
-fprintf('const obs_float OBS_Bx = %.16f;\n',Bo_y(1,1))
+fprintf('const obs_float OBS_Ad = %.20E;\n',Ad_y(1,1))
+fprintf('const obs_float OBS_Ax = %.20E;\n',Ao_y(1,1))
+fprintf('const obs_float OBS_Bx = %.20E;\n',Bo_y(1,1))
 for j = 2:9
-    fprintf('const obs_float OBS_Ax_pow_%d = %.16f;\n', j, Ao_y(1,1)^j)
+    fprintf('const obs_float OBS_Ax_pow_%d = %.20E;\n', j, Ao_y(1,1)^j)
 end
 fprintf('#endif\n')
 
@@ -79,7 +81,7 @@ for pick_dir = 1:2
     if strcmp(pick_direction, 'vertical')
         id_to_bpm = id_to_bpm_y;
         id_to_cm = id_to_cm_y;
-        RM = RMy;
+        RM = RMy; RMorig = RMorigy;
         aI_Hz = 700; % Corrector bandwidth [Hz]
         Ao = Ao_y; Bo = Bo_y; Co = Co_y; Ad = Ad_y; Cd = Cd_y; % plant for observer
         Ap = Ap_y; Bp = Bp_y; Cp = Cp_y; % plant with all BPMs and CMs
@@ -93,7 +95,7 @@ for pick_dir = 1:2
     else
         id_to_bpm = id_to_bpm_x;
         id_to_cm = id_to_cm_x;
-        RM = RMx;
+        RM = RMx; RMorig = RMorigx;
         aI_Hz = 500; % Corrector bandwidth [Hz]
         Ao = Ao_x; Bo = Bo_x; Co = Co_x; Ad = Ad_x; Cd = Cd_x; % plant for observer
         Ap = Ap_x; Bp = Bp_x; Cp = Cp_x; % plant with all BPMs and CMs
@@ -111,7 +113,7 @@ for pick_dir = 1:2
     %scale_R = 1e6;
     %RM = RM * scale_R;
 
-    %% Observer
+    % Observer
     Lxd_obs = Kfd;
     Lx8_obs = Kfx;    
 
@@ -129,7 +131,7 @@ for pick_dir = 1:2
     Apow7 = (Ao(1,1)^7);
     Apow8 = (Ao(1,1)^8);
     
-    %% MPC
+    % MPC
     horizon = 1;
     u_rate = 0.99*1000; % |(u - awr) * 1e3/1e6| <= 1
     u_max = hardlimits(id_to_cm)*1000; % it's cm_input = |u * 1e3/1e6| <= 5
@@ -145,16 +147,19 @@ for pick_dir = 1:2
     q_mat_xd = q_mat_xd/L;
     q_mat = [q_mat_x0, q_mat_xd];
     
-    %% Rate limiter on VME processors
+    % Rate limiter on VME processors
     a_awr = 2*2*pi;
     g_awr_z = tf([a_awr/(a_awr+2/Ts),a_awr/(a_awr+2/Ts)],...
         [1,(a_awr-2/Ts)/(a_awr+2/Ts)],Ts,'Variable','z^-1');
     sys_awr = eye(nu) * g_awr_z;
     ss_awr = ss(sys_awr);
 
-    %% Get test data
+    % Get test data
     n_samples = 1000;
     doff = ones(TOT_BPM, n_samples);
+    [Utmp,~,~] = svd(RMorig);
+    %doff = randn(TOT_BPM,1).*ones(1,n_samples);
+    %doff = Utmp(:,20).*ones(1,n_samples);
     SOFB_setp = 0.9*SOFB_setpoints(id_to_cm)';
     SOFB_setp(SOFB_setp>u_max) = u_max(SOFB_setp>u_max);
     SOFB_setp(SOFB_setp<-u_max) = -u_max(SOFB_setp<-u_max);
@@ -169,22 +174,14 @@ for pick_dir = 1:2
             ss_awr.A,ss_awr.B,ss_awr.C,ss_awr.D,...
             SOFB_setp);   
     y_awr = lsim(sys_awr,u_sim(1:n_samples,id_to_cm)/1000,(0:1:n_samples-1)*Ts);
-    if true == false
-        figure;
-        subplot(1,4,1); plot(doff(id_to_bpm,:)'); title('Disturbance [mum]');
-        subplot(1,4,2); plot(y_sim(:,id_to_bpm)); title('Output [mum]');
-        subplot(1,4,3); plot((u_sim(1:n_samples,id_to_cm)+ones(n_samples,1)*SOFB_setpoints(id_to_cm))/1000); title('Input [A]');
-        subplot(1,4,4); plot(u_sim/1000-y_awr); title('AWR [A]');
-    end
-    if true == true
-        figure;
-        subplot(1,5,1); plot(doff(id_to_bpm,:)'); title('Disturbance [mum]');
-        subplot(1,5,2); plot(y_sim(:,id_to_bpm)); title('Output [mum]');
-        subplot(1,5,3); plot((u_sim(1:n_samples,id_to_cm)+ones(n_samples,1)*SOFB_setpoints(id_to_cm))/1000); title('Input with SOFB [A]');
-        subplot(1,5,4); plot((u_sim(1:n_samples,id_to_cm))/1000); title('Input [A]');
-        subplot(1,5,5); plot(u_sim(1:n_samples,id_to_cm)/1000-y_awr); title('AWR [A]');
-    end
-    %% FGM Data
+    figure;
+    subplot(1,5,1); plot(doff(id_to_bpm,:)'); title('Disturbance [mum]');
+    subplot(1,5,2); plot(y_sim(:,id_to_bpm)); title('Output [mum]');
+    subplot(1,5,3); plot((u_sim(1:n_samples,id_to_cm)+ones(n_samples,1)*SOFB_setpoints(id_to_cm))/1000); title('Input with SOFB [A]');
+    subplot(1,5,4); plot((u_sim(1:n_samples,id_to_cm))/1000); title('Input [A]');
+    subplot(1,5,5); plot(u_sim(1:n_samples,id_to_cm)/1000-y_awr); title('AWR [A]');
+
+    % FGM Data
     [rows_J_MPC, cols_J_MPC] = size(J_MPC);
     NWORKERS = 6;
     NROWS_W = 32;
@@ -220,35 +217,7 @@ for pick_dir = 1:2
     fprintf(fid, '#endif /* FGM_DATA_C6678_NWORKERS6_%s_H_ */\n',upper(dirs{pick_dir}));
     fclose(fid);
     
-    %% FGM test data
-    if false
-    fgm_x0_pad = [fgm_x0; zeros(NPAD_x0,n_samples)]';
-    fgm_xd_pad = [fgm_xd; zeros(NPAD_xd,n_samples)]';
-    fgm_u_pad = [fgm_u; zeros(NPAD_x0,n_samples)]';
-    fgm_out_pad = [fgm_out; zeros(NPAD_x0,n_samples)]';
-        
-    fid = fopen(sprintf('%s/FGM_test_data_c6678_NWORKERS6_%s.h',folder_out,lower(dirs{pick_dir})), 'w');
-    fprintf(fid, '#ifndef FGM_TEST_DATA_C6678_NWORKERS6_%s_H_\n#define FGM_TEST_DATA_C6678_NWORKERS6_%s_H_\n\n',...
-        upper(dirs{pick_dir}),upper(dirs{pick_dir}));
-    fprintf(fid, '#include "mpc/fast_gradient_method.h"\n');
-    print_dense_C_matrix(fid, fgm_x0_pad, 'fgm_float', 'fgm_x0_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, fgm_xd_pad, 'fgm_float', 'fgm_xd_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, fgm_u_pad, 'fgm_float', 'fgm_u_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, fgm_out_pad, 'fgm_float', 'fgm_out_pad', true, '.mpc_test', 2);
-    fprintf(fid, '#endif /* FGM_TEST_DATA_C6678_NWORKERS6_%s_H_ */\n',upper(dirs{pick_dir}));
-    fclose(fid);
-    end
-    
-    %% Watchdog data
-%     fid = fopen(sprintf('%s/FGM_watchdog_data.h',folder_out), 'w');
-%     fprintf(fid, '#ifndef MPC_WATCHDOG_DATA_H_\n#define FGM_WATCHDOG_DATA_H_\n\n');
-%     fprintf(fid, '#include "mpc/fast_gradient_method.h"\n\n');
-%     print_dense_C_matrix(fid, [u_max; zeros(NPAD,1)], 'fgm_float',...
-%         'HARDLIMITS_mA', true, '.fgm_local_data', 2);
-%     fprintf(fid, '#endif /* FGM_WATCHDOG_DATA_H_ */\n');
-%     fclose(fid);
-    
-    %% OBS Data
+    % OBS Data
     Lx_pad = [Lx8_obs, zeros(nx, NPAD_xd); zeros(NPAD_x0, NROWS)];
     Ld_pad = [Lxd_obs, zeros(ny, NPAD_xd); zeros(NPAD_xd, NROWS)];
     Cx_pad = [Co, zeros(ny, NPAD_x0); zeros(NPAD_xd, NROWS)];
@@ -263,27 +232,7 @@ for pick_dir = 1:2
     fprintf(fid, '#endif /* OBS_DATA_C6678_NWORKERS6_%s_H_ */\n',upper(dirs{pick_dir}));
     fclose(fid);    
     
-    %% OBS test data
-    if false
-    obs_u_pad = [obs_u; zeros(NPAD_x0,n_samples)]';
-    obs_y_pad = [obs_y; zeros(NPAD_xd,n_samples)]';
-    obs_x0_pad = [obs_x0; zeros(NPAD_x0,n_samples)]';
-    obs_xd_pad = [obs_xd; zeros(NPAD_xd,n_samples)]';
-    
-    fid = fopen(sprintf('%s/OBS_test_data_c6678_NWORKERS6_%s.h',folder_out,lower(dirs{pick_dir})), 'w');
-    fprintf(fid, '#ifndef OBS_TEST_DATA_C6678_NWORKERS6_%s_H_\n#define OBS_TEST_DATA_C6678_NWORKERS6_%s_H_\n\n',...
-        upper(dirs{pick_dir}),upper(dirs{pick_dir}));
-    fprintf(fid, '#include "mpc/observer.h"\n');
-    print_dense_C_matrix(fid, obs_u_pad, 'obs_float', 'obs_u_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, obs_y_pad, 'obs_float', 'obs_y_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, obs_x0_pad, 'obs_float', 'obs_x0_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, obs_xd_pad, 'obs_float', 'obs_xd_pad', true, '.mpc_test', 2);
-    print_dense_C_matrix(fid, SOFB_setpoints, 'obs_float', 'obs_u_pad', true, '.mpc_test', 2);
-    fprintf(fid, '#endif /* OBS_TEST_DATA_C6678_NWORKERS6_%s_H_ */\n',upper(dirs{pick_dir}));
-    fclose(fid);
-    end
-    
-    %% MPC test data
+    % MPC test data
     network_scaling = -1e3;
     nt = 100;
     ydata = round(y_sim(1:1+nt,:)*1000,0);
@@ -296,7 +245,7 @@ for pick_dir = 1:2
     fprintf(fid, '#endif\n');
     fclose(fid);
 
-    %% Storage Ring Config
+    % Storage Ring Config
     fid = fopen(sprintf('%s/MPC_storage_ring_config_%s.h',folder_out,lower(dirs{pick_dir})), 'w');
     fprintf(fid, '#ifndef MPC_STORAGE_RING_CONFIG_%s_H_\n#define MPC_STORAGE_RING_CONFIG_%s_H_\n\n',...
         upper(dirs{pick_dir}),upper(dirs{pick_dir}));
@@ -307,7 +256,7 @@ for pick_dir = 1:2
     fprintf(fid, '#endif /* MPC_STORAGE_RING_CONFIG_%s_H_ */\n',upper(dirs{pick_dir}));
     fclose(fid);
     
-    %% AWR
+    % AWR
     [num_awr, den_awr] = tfdata(g_awr_z);
     generate_filter_from_TF(folder_out, NROWS_W, num_awr{:}, den_awr{:}, 'awr',...
         'float', 0, '.mpc_awr', 64, 1e20);

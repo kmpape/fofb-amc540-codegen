@@ -19,6 +19,7 @@ FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
 V4_CONFIG   = 4; % 03.08.2022 SR config
 V5_CONFIG   = 5; % 13.09.2022 SR config
+V6_CONFIG   = 6; % 11.10.2022 SR config
 
 %% Configure Diamond-I Storage Ring
 load(fname_RM);
@@ -53,6 +54,10 @@ elseif (sr_config_choice == V4_CONFIG) % use same storage ring config as GSVD-IM
 elseif (sr_config_choice == V5_CONFIG) % use same storage ring config as MPC
     square_config = true;
     [id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v5(RMorigx,RMorigy,square_config);
+    n_cores = 6;
+elseif (sr_config_choice == V6_CONFIG) % use same storage ring config as MPC
+    square_config = false;
+    [id_to_bpm_x, id_to_cm_x, id_to_bpm_y, id_to_cm_y] = diamond_I_configuration_v6(RMorigx,RMorigy,square_config);
     n_cores = 6;
 else
     assert(0);
@@ -94,14 +99,17 @@ Ky = V*E*U';
 
 z = tf('z', Ts);
 s = tf('s');
-bw = 2*pi*176;
+bw = 1/(n_delay*Ts);
 abw = exp(-bw*Ts);
 T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
-q_zx = T_mp_z / gI_mp_zx;
-q_zy = T_mp_z / gI_mp_zy;
 
-c_zx = q_zx / (1 - T_mp_z*z^(-n_delay));
-c_zy = q_zy / (1 - T_mp_z*z^(-n_delay));
+% new: epsilon parameter as in the standard FOFB
+epsilon = 1e-6;
+q_zx = (1-epsilon) * T_mp_z / gI_mp_zx;
+q_zy = (1-epsilon) * T_mp_z / gI_mp_zy;
+
+c_zx = q_zx / (1 - (1-epsilon)*T_mp_z*z^(-n_delay));
+c_zy = q_zy / (1 - (1-epsilon)*T_mp_z*z^(-n_delay));
 
 %% Code generation
 if codegen_mc == true
@@ -185,8 +193,11 @@ if do_codegen == true
                 RMorig = RMorigy;
                 gI_mp_z = gI_mp_zy;
             end
-            n_samples = 1000; 
-            doff = randn(TOT_BPM,1).*ones(1,n_samples);
+            n_samples = 1000;
+            [Utmp,~,~] = svd(RMorig);
+            %doff = randn(TOT_BPM,1).*ones(1,n_samples);
+            %doff = Utmp(:,20).*ones(1,n_samples);
+            doff = ones(TOT_BPM,1).*ones(1,n_samples);
             [A, B, C ,D] = ssdata(RMorig .* gI_mp_z);
             [Ac, Bc, Cc, Dc] = ssdata(-K(1:end-nu_pad,1:end-ny_pad).*cz);
             [y_sim, u_sim] = sim_standard_imc(...
@@ -213,7 +224,7 @@ if do_codegen == true
             subplot(1,4,1); 
             if ~isempty(not_ctr); plot(t,doff(not_ctr,:)','--','color',[0.9 0.9 0.9]); hold on; end
             plot(t,doff(id_to_bpm,:)'); title(sprintf('Disturbance %s',dirs{i}));
-            ylim([min(min(doff(id_to_bpm,:))), max(max(doff(id_to_bpm,:)))]);
+            ylim([0.9*min(min(doff(id_to_bpm,:))), 1.1*max(max(doff(id_to_bpm,:)))]);
             xlabel('Time [s]'); ylabel('Position [mum]');
 
             subplot(1,4,2);

@@ -50,7 +50,7 @@ minus_one = -1;
 
 %% Mid-Ranging IMC
 bw_allx = 1/(n_delay*Ts);%176*2*pi; % overall desired bandwidth [rad/s]
-bw_sx =  10*2*pi; % slow actuators desired bandwidth [rad/s]
+bw_sx =  50*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpx = bw_allx/(s+bw_allx);
 T_siso_mpx = bw_sx/(s+bw_sx);
 
@@ -59,10 +59,12 @@ bw_sy = 10*2*pi; % slow actuators desired bandwidth [rad/s]
 T_tiso_mpy = bw_ally/(s+bw_ally);
 T_siso_mpy = bw_sy/(s+bw_sy);
 
-qs_zx = c2d(T_siso_mpx / tf_DIx, Ts, 'zoh');
-qf_zx = c2d((T_tiso_mpx - T_siso_mpx) / tf_DIx, Ts, 'zoh');
-qs_zy = c2d(T_siso_mpy / tf_DIy, Ts, 'zoh');
-qf_zy = c2d((T_tiso_mpy - T_siso_mpy) / tf_DIy, Ts, 'zoh');
+% new: epsilon parameter as in the standard FOFB
+epsilon = 1e-6;
+qs_zx = (1-epsilon) * c2d(T_siso_mpx / tf_DIx, Ts, 'zoh');
+qf_zx = (1-epsilon) * c2d((T_tiso_mpx - T_siso_mpx) / tf_DIx, Ts, 'zoh');
+qs_zy = (1-epsilon) * c2d(T_siso_mpy / tf_DIy, Ts, 'zoh');
+qf_zy = (1-epsilon) * c2d((T_tiso_mpy - T_siso_mpy) / tf_DIy, Ts, 'zoh');
 
 % GSVD
 mu = 1;
@@ -87,8 +89,8 @@ Kfy = -((Uf*pinv(Sf)/X)*Ff)*G;
 Psy = -G\Rsy;
 Pfy = -G\Rfy;
 
-w_Hz = logspace(-1,3,100);
-get_GSVD_IMC_sensitivity_v2(RMorigx, RMorigy, bw_sx, bw_allx, bw_sy, bw_ally, n_delay, w_Hz, true, n_delay, mu);
+% w_Hz = logspace(-1,3,100);
+% get_GSVD_IMC_sensitivity_v2(RMorigx, RMorigy, bw_sx, bw_allx, bw_sy, bw_ally, n_delay, w_Hz, true, n_delay, mu);
 
 %% Code generation
 n_cores = 4;
@@ -205,8 +207,9 @@ if do_codegen == true
         end
         
         if gen_ctr_test_data == 1
-            n_samples = 10000; 
-            doff = randn(TOT_BPM,1).*ones(1,n_samples);
+            n_samples = 1000; 
+            %doff = randn(TOT_BPM,1).*ones(1,n_samples);
+            doff = ones(TOT_BPM,1).*ones(1,n_samples);
             if i==1
                 tf_DI = tf_DIx; 
                 RMorig = RMorigx;
@@ -251,7 +254,7 @@ if do_codegen == true
             fig = figure;
             subplot(1,5,1); plot(t,doff(not_ctr,:)','--','color',[0.9 0.9 0.9]); hold on; 
             plot(t,doff(id_to_bpm,:)'); title(sprintf('Disturbance %s',dirs{i}));
-            ylim([min(min(doff(id_to_bpm,:))), max(max(doff(id_to_bpm,:)))]);
+            ylim([0.9*min(min(doff(id_to_bpm,:))), 1.1*max(max(doff(id_to_bpm,:)))]);
             xlabel('Time [s]'); ylabel('Position [mum]');
 
             subplot(1,5,2); plot(t,y_sim(:,not_ctr),'--','color',[0.9 0.9 0.9]); hold on; 

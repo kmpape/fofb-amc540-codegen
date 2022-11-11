@@ -18,6 +18,8 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
     aIy = 2*pi*700; % [rad/s]
     Fs = 10*10^3; % sample frequency [Hz]
     Ts = 1/Fs; % sample time [s]
+    ep = 10^-6; % integrator damping [-]
+    Ad = 1-ep;
     %nd = 9; % number of delay samples [-]
     
     %% Frequencies for Sensitivity
@@ -56,7 +58,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             sval = SR(imode,imode);
             g_mp = sval*(1-a)/(z-a);
             g = g_mp * z^(-nd);
-            c_imc = (1-b)/(1-a)*(z-a)*z^nd/(z^(nd+1)-b*z^nd-(1-b))*sval/(sval^2+mu);
+            c_imc = (1-ep)*(1-b)/(1-a)*(z-a)*z^nd/(z^(nd+1)-b*z^nd-(1-ep)*(1-b))*sval/(sval^2+mu);
             Smodei = inv(1+minreal(g*c_imc));
             pi_imc = pole(Smodei); % need to select the right pole
             pi_imc = pi_imc((imag(pi_imc)==0) & (real(pi_imc)>0));
@@ -90,7 +92,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             Rxtilde(imode) = Rlqr;
             Ptilde(imode) = Plqr(1,1);
             
-            Ao = blkdiag(Ap,1);
+            Ao = blkdiag(Ap,Ad);
             Bo = [Bp; 0];
             Co = [zeros(1,nd),sval, 1];
             Kf = [zeros(nd+1,1); Kdtilde(imode)];
@@ -156,9 +158,9 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
     Cp_y = RMorigy;
 
     % Disturbance
-    Ad_x = eye(ny_x);
+    Ad_x = Ad*eye(ny_x);
     Cd_x = eye(ny_x);
-    Ad_y = eye(ny_y);
+    Ad_y = Ad*eye(ny_y);
     Cd_y = eye(ny_y);
 
     if ~isempty(fname)

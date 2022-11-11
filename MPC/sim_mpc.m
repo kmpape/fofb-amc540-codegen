@@ -212,7 +212,7 @@ for k = 1:1:n_samples
         fgm_result = z_new; % new: use z_new instead of out_global
         fgm_out(:,k-n_delay) = fgm_result;
         if hil_mode == true
-            fgm_result = round(fgm_result*1e6,0)/1e6;
+            fgm_result = round(fgm_result*1e3,0)/1e3; % note that MPC setpoint is in mA and we are streaming microA
         end
         u_sim(id_to_cm,k) = double(fgm_result);
         
@@ -224,7 +224,7 @@ for k = 1:1:n_samples
     
     % Plant
     x_sim_old = x_sim_new;
-    x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k));
+    x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k)); % note that the plant model accepts mA, but in D-I we need ending up with A
 end
 u_sim = u_sim';
 y_sim = y_sim';
