@@ -13,7 +13,7 @@ gen_filter_unit_test_data = 0;
 gen_matvec_mpy_unit_test_data = 0; 
 use_PYTHON_parameter = 0;
 
-sr_config_choice = 5;
+sr_config_choice = 3;
 
 FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
@@ -87,7 +87,7 @@ gI_mp_zy = c2d(tf_DIy, Ts, 'zoh');
 minus_one = -1;
 
 %% IMC
-mu = 2.0;
+mu = 1.0;
 
 [U, S, V] = svd(RMx, 'econ');
 MU = mu*eye(ny_x);
@@ -101,12 +101,12 @@ Ky = V*E*U';
 
 z = tf('z', Ts);
 s = tf('s');
-bw = 100*2*pi; % 1/(n_delay*Ts);
+bw = 1/(n_delay*Ts); % 1/(n_delay*Ts);
 abw = exp(-bw*Ts);
 T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
 
 % new: epsilon parameter as in the standard FOFB
-epsilon = 1e-6;
+epsilon = 0*1e-6;
 q_zx = (1-epsilon) * T_mp_z / gI_mp_zx;
 q_zy = (1-epsilon) * T_mp_z / gI_mp_zy;
 
