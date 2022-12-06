@@ -1,4 +1,4 @@
-function [y_sim,u_sim,...
+function [y_sim,u_sim,x_sim,...
     obs_y,obs_u,obs_x0,obs_xd,...
     fgm_x0,fgm_xd,fgm_u,fgm_out,lower_u,upper_u] = sim_mpc(...
             n_samples, n_delay, dist,...
@@ -18,7 +18,6 @@ assert((n_delay == 8)||n_delay==9);
 use_single = true;
 hil_mode = true;
 
-
 [nx_plant, nu_plant] = size(Bp);
 [ny_plant, ~] = size(Cp);
 [nx_obs, nu_obs] = size(Bo);
@@ -28,6 +27,7 @@ hil_mode = true;
 x_sim_new=zeros(nx_plant,1); x_sim_old=zeros(nx_plant,1);
 y_sim = zeros(ny_plant, n_samples);
 u_sim = zeros(nu_plant, n_samples);
+x_sim = zeros(nu_plant, n_samples);
 
 % Variables AWR
 [ny_awr,nx_awr]=size(C_awr);
@@ -196,6 +196,7 @@ for k = 1:1:n_samples
             lower_u = max(-u_max-double(SOFB_setp),-u_rate+double(y_awr));
             upper_u = min(u_max-double(SOFB_setp),u_rate+double(y_awr));
         end
+        assert(sum(lower_u > upper_u)==0)
 
         % Fast gradient method
         if use_single == true
@@ -225,8 +226,10 @@ for k = 1:1:n_samples
     % Plant
     x_sim_old = x_sim_new;
     x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k)); % note that the plant model accepts mA, but in D-I we need ending up with A
+    x_sim(:, k) = x_sim_old;
 end
 u_sim = u_sim';
 y_sim = y_sim';
+x_sim = x_sim';
 
 end

@@ -1,4 +1,4 @@
-function [y_sim, u_sim] = sim_lqr(...
+function [y_sim, u_sim, x_sim] = sim_lqr(...
             n_samples, n_delay, dist,...
             Ap, Bp, Cp,... % plant
             Ao, Bo, Co, Kf, Kc,... % observer and regulator
@@ -7,7 +7,7 @@ function [y_sim, u_sim] = sim_lqr(...
 if ~exist('ol_mode','var')
     ol_mode = false;
 end
-        
+
 %%
 assert((n_delay == 8)||n_delay==9);
 use_single = true;
@@ -23,6 +23,7 @@ x_sim_new=zeros(nx_plant,1);
 x_sim_old=zeros(nx_plant,1);
 y_sim = zeros(ny_plant, n_samples);
 u_sim = zeros(nu_plant, n_samples);
+x_sim = zeros(nu_plant, n_samples);
 
 % Variables Observer
 if use_single == true
@@ -75,8 +76,10 @@ for k = 1:1:n_samples
     % Plant
     x_sim_old = x_sim_new;
     x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k));
+    x_sim(:, k) = x_sim_old;
 end
 u_sim = u_sim';
 y_sim = y_sim';
+x_sim = x_sim';
 
 end

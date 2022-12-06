@@ -146,8 +146,9 @@ if do_codegen == true
             id_to_cm = id_to_cm_y;
         end
         
-        [num_czx, den_czx] = tfdata(c_zx);
-        [num_czy, den_czy] = tfdata(c_zy);
+        [num_czx, den_czx] = tfdata(minreal(c_zx));
+        [num_czy, den_czy] = tfdata(minreal(c_zy));
+        
         % generate filter
         generate_filter_from_TF_XY_v2(folder_out, nu_x, num_czx{:}, den_czx{:}, 'IMC_DI',...
             'double', gen_filter_unit_test_data, '.imc_DI', 64, 4.99, nu_y, num_czy{:}, den_czy{:});

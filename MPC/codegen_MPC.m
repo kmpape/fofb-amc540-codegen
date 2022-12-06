@@ -41,7 +41,7 @@ RMy = RMorigy(id_to_bpm_y,id_to_cm_y);
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time [s]
 fname = sprintf('mpc_data_11112022_nd%d.mat',n_delay);
-if ~exist(fname,'file')
+if true %~exist(fname,'file')
     print_msg = false;
     [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
      Kfd_x, Kfx_x, ~, ~, P_x, Rlqr_x, Qlqr_x,...
@@ -155,7 +155,7 @@ for pick_dir = 1:2
     ss_awr = ss(sys_awr);
 
     % Get test data
-    n_samples = 1000;
+    n_samples = 10000;
     doff = ones(TOT_BPM, n_samples);
     [Utmp,~,~] = svd(RMorig);
     %doff = randn(TOT_BPM,1).*ones(1,n_samples);
@@ -163,7 +163,7 @@ for pick_dir = 1:2
     SOFB_setp = 0.9*SOFB_setpoints(id_to_cm)';
     SOFB_setp(SOFB_setp>u_max) = u_max(SOFB_setp>u_max);
     SOFB_setp(SOFB_setp<-u_max) = -u_max(SOFB_setp<-u_max);
-    [y_sim,u_sim,obs_y,obs_u,obs_x0,obs_xd,...
+    [y_sim,u_sim,~,obs_y,obs_u,obs_x0,obs_xd,...
      fgm_x0,fgm_xd,fgm_u,fgm_out,lower_u,upper_u] = sim_mpc(...
             n_samples, n_delay, doff,...
             Ap, Bp, Cp, ... % Plant

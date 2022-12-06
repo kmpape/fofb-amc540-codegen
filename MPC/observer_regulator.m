@@ -49,6 +49,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
         Kxtilde = zeros(ny,1); % x refers to state x here
         Kdtilde = zeros(ny,1);
         Rxtilde = zeros(ny,1);
+        Qxtilde = zeros(ny,1);
         Ptilde = zeros(ny,1);
         sensitivity_lqr = zeros(length(w_Hz),ny);
         sensitivity_imc = zeros(length(w_Hz),ny);
@@ -81,7 +82,9 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             % J = Sum {x'Qx + u'Ru + 2*x'Nu}
             % x[n+1] = Ax[n] + Bu[n]
             Qlqr = diag([1,zeros(1,nd)]);
-            Rlqr = sqrt((mu+sval^2)/sval^2);
+            %Qlqr = diag([sval^2,zeros(1,nd)]);
+            Rlqr = sqrt((mu+sval^2)/sval^2); % up to v105-xi 
+            Rlqr = sval^2;
             if false
                 [Kc,Plqr,~] = dlqr(Ap,Bp,Qlqr,Rlqr,0);
                 Kxtilde(imode) = Kc(1);
@@ -91,6 +94,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             end
             Rxtilde(imode) = Rlqr;
             Ptilde(imode) = Plqr(1,1);
+            Qxtilde(imode) = Qlqr(1,1);
             
             Ao = blkdiag(Ap,Ad);
             Bo = [Bp; 0];
@@ -122,7 +126,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             Kcd_x = VR*(SR\(eye(ny)+diag(Kxtilde)))*UR';
             P_x = VR*diag(Ptilde)*VR';
             Rlqr_x = VR*diag(Rxtilde)*VR';
-            Qlqr_x = eye(nu_x);
+            Qlqr_x = VR*diag(Qxtilde)*VR';
             Slqr_x = sensitivity_lqr;
             Simc_x = sensitivity_imc;
             poles_imc_x = poles_imc;
@@ -133,7 +137,7 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             Kcd_y = VR*(SR\(eye(ny)+diag(Kxtilde)))*UR';
             P_y = VR*diag(Ptilde)*VR';
             Rlqr_y = VR*diag(Rxtilde)*VR';
-            Qlqr_y = eye(nu_y);
+            Qlqr_y = VR*diag(Qxtilde)*VR';
             Slqr_y = sensitivity_lqr;
             Simc_y = sensitivity_imc;
             poles_imc_y = poles_imc;
