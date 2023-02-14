@@ -155,7 +155,7 @@ for pick_dir = 1:2
     ss_awr = ss(sys_awr);
 
     % Get test data
-    n_samples = 10000;
+    n_samples = 1000;
     doff = ones(TOT_BPM, n_samples);
     [Utmp,~,~] = svd(RMorig);
     %doff = randn(TOT_BPM,1).*ones(1,n_samples);

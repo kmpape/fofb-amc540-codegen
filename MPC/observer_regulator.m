@@ -84,7 +84,8 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             Qlqr = diag([1,zeros(1,nd)]);
             %Qlqr = diag([sval^2,zeros(1,nd)]);
             %Rlqr = sqrt((mu+sval^2)/sval^2); % up to v105-xi 
-            Rlqr = sval;
+            %Rlqr = sval; % v106-xi
+            Rlqr = sqrt(sval); % v107-xi
             if false
                 [Kc,Plqr,~] = dlqr(Ap,Bp,Qlqr,Rlqr,0);
                 Kxtilde(imode) = Kc(1);
