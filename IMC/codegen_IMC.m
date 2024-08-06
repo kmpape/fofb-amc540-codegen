@@ -13,7 +13,7 @@ gen_filter_unit_test_data = 0;
 gen_matvec_mpy_unit_test_data = 0; 
 use_PYTHON_parameter = 0;
 
-sr_config_choice = 3;
+sr_config_choice = 5;
 
 FULL_CONFIG = 0; % 171 x 172
 V3_CONFIG   = 3; % 96 x 96
@@ -106,7 +106,7 @@ abw = exp(-bw*Ts);
 T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
 
 % new: epsilon parameter as in the standard FOFB
-epsilon = 0*1e-6;
+epsilon = 1*1e-6;
 q_zx = (1-epsilon) * T_mp_z / gI_mp_zx;
 q_zy = (1-epsilon) * T_mp_z / gI_mp_zy;
 
@@ -246,6 +246,28 @@ if do_codegen == true
         end
     end
 end
+
+
+%% Reference signal
+len_ref = 10000;
+pause_ref = len_ref;
+t_ref = (0 : 1 : len_ref-1)*Ts;
+ibpm_ref = 1;
+w_ref = 2*pi / 0.5;
+A_ref = 5000; % in nanometers
+sig_ref = round(A_ref*sin(w_ref*t_ref),0);
+
+fid = fopen([folder_out,'reference_signal.h'], 'w');
+fprintf(fid, '#ifndef REFERENCE_SIGNAL_H\n#define REFERENCE_SIGNAL_H\n');
+fprintf(fid, '#define REF_SIGNAL_LEN (%d)\n', len_ref);
+fprintf(fid, '#define REF_PAUSE_LEN (%d)\n', pause_ref);
+print_dense_C_matrix(fid, sig_ref, 'int', 'ref_signal_nm', true, '.ref_local', 2);
+fprintf(fid, '#endif\n');
+fclose(fid);
+
+figure;
+plot(t_ref,sig_ref); xlabel('Time (s)'); ylabel('Reference (nm)');
+
 
 
 

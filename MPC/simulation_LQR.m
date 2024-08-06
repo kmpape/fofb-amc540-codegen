@@ -4,7 +4,7 @@ addpath('/home/idris/Documents/EngSci/Matlab/simulink_models');
 addpath('/home/idris/Documents/EngSci/Matlab/osqp/osqp-0.4.1-matlab-linux64');
 addpath('/home/idris/Documents/EngSci/Matlab');
 addpath('..')
-
+asdf
 clear all
 close all
 clc
@@ -15,7 +15,7 @@ fname_Y = '../../DATA/04092022_135252_data_Y.mat';
 pick_dir = 2;
 dirs = {'horizontal','vertical'};
 pick_direction = dirs{pick_dir};
-do_step = false;
+do_step = true;
 sim_IMC = false;
 
 %% Hardlimits
@@ -40,7 +40,7 @@ n_delay = 9;
 Fs = 10*10^3; % sample frequency [Hz]
 Ts = 1/Fs; % sample time [s]
 fname = sprintf('mpc_data_02092022_nd%d.mat',n_delay);
-if ~exist(fname,'file')
+if true % ~exist(fname,'file')
     print_msg = false;
     [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
           Kfd_x, Kfx_x, Kcx_x, Kcd_x, P_x, Rlqr_x, Qlqr_x,...
@@ -55,6 +55,7 @@ if strcmp(pick_direction, 'vertical')
     id_to_bpm = id_to_bpm_y;
     id_to_cm = id_to_cm_y;
     RM = RMy;
+    RMorig = RMorigy;
     aI_Hz = 700; % Corrector bandwidth [Hz]
     Ao = Ao_y; Bo = Bo_y; Co = Co_y; Ad = Ad_y; Cd = Cd_y; % plant for observer
     Ap = Ap_y; Bp = Bp_y; Cp = Cp_y; % plant with all BPMs and CMs
@@ -66,6 +67,7 @@ else
     id_to_bpm = id_to_bpm_x;
     id_to_cm = id_to_cm_x;
     RM = RMx;
+    RMorig = RMorigx;
     aI_Hz = 500; % Corrector bandwidth [Hz]
     Ao = Ao_x; Bo = Bo_x; Co = Co_x; Ad = Ad_x; Cd = Cd_x; % plant for observer
     Ap = Ap_x; Bp = Bp_x; Cp = Cp_x; % plant with all BPMs and CMs
@@ -109,9 +111,18 @@ end
 
 %% Measurement Data
 if do_step
+    imode = 140;
     n_samples = 2000;
-    doff = ones(TOT_BPM,1) .* ones(1,n_samples)*10;
-    don = doff;    
+    mag_u = 10*1000;
+    %%tmp = UR(:,imode)*SR(imode,imode)*mag_u;
+    [UUd,SSd,VVd]= svd(RM);
+    tmp = zeros(TOT_BPM,1);
+    tmp(id_to_bpm) = UUd(:,140);
+    doff = tmp .* ones(1,n_samples)*mag_u*SR(imode,imode);
+    [UU,SS,VV]= svd(RMorig);
+    doff = UU(:,100) .* ones(1,n_samples)*10;
+    % doff = randn(TOT_BPM,1) .* ones(1,n_samples)*10;
+    don = doff;
 else
     if strcmp(pick_direction, 'vertical')
         fname = fname_Y;
@@ -130,7 +141,7 @@ else
     don(bad_bpm,:) = 0;
 end
 
-%% Simulation
+% Simulation
 endt = (n_samples*Ts)-Ts;
 Lsim = n_samples*Ts;
 t= 0:Ts:endt;
@@ -139,13 +150,6 @@ t= 0:Ts:endt;
             n_samples, n_delay, doff,...
             Ap, Bp, Cp,... % plant
             Aobs, Bobs, Cobs, Kf, Kc,... % observer and regulator
-            id_to_bpm, id_to_cm,...
-            false);
-
-[y_sim_mode, u_sim_mode] = sim_lqr_mode(...
-            n_samples, n_delay, doff,...
-            Ap, Bp, Cp,... % plant
-            Aoi, Boi, Coi, Kfi, Kci, UR, VR,... % observer and regulator
             id_to_bpm, id_to_cm,...
             false);
 
@@ -171,17 +175,28 @@ if sim_IMC
 end
 
 scale_u = 1e-3;
-
 figure;
-subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance LQR');
-subplot(2,2,2); plot(y_sim(:,id_to_bpm)); title('Output LQR');
-subplot(2,2,3); plot(u_sim*scale_u); title('Input LQR');
+subplot(2,3,1); plot(doff(id_to_bpm,:)'); title('Disturbance LQR');
+subplot(2,3,2); plot(y_sim(:,id_to_bpm)); title('Output LQR');
+subplot(2,3,3); plot(u_sim*scale_u); title('Input LQR');
 
+% doffm = UU'*doff;
+% subplot(2,3,4); plot(doff(id_to_bpm,:)'); title('Disturbance LQR - Mode Space');
+% subplot(2,3,5); plot(y_sim(:,id_to_bpm)); title('Output LQR - Mode Space');
+
+%%
+
+[y_sim_mode, u_sim_mode] = sim_lqr_mode(...
+            n_samples, n_delay, doff,...
+            Ap, Bp, Cp,... % plant
+            Aoi, Boi, Coi, Kfi, Kci, UR, VR,... % observer and regulator
+            id_to_bpm, id_to_cm,...
+            false);
 figure;
 subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance LQR MODE');
 subplot(2,2,2); plot(y_sim_mode(:,id_to_bpm)); title('Output LQR MODE');
 subplot(2,2,3); plot(u_sim_mode*scale_u); title('Input LQR MODE');
-    
+
 if sim_IMC
     figure;
     subplot(2,2,1); plot(doff(id_to_bpm,:)'); title('Disturbance IMC');

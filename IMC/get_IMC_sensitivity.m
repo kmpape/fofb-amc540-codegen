@@ -57,7 +57,7 @@ z = tf('z', Ts);
 s = tf('s');
 %bw = 2*pi*200;
 abw = exp(-bw*Ts);
-T_mp_z = (1-abw) / (1-z^(-1)*abw) * z^(-1);
+T_mp_z = (1-abw) / (z-abw);
 q_zx = T_mp_z / gI_mp_zx;
 q_zy = T_mp_z / gI_mp_zy;
 
