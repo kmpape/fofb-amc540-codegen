@@ -1,8 +1,34 @@
+%observer_regulator.m Creates matrices for observer and LQR
+%
+% Inputs:
+%   RMorigx     :   Orbit response matrix X
+%   RMorigy     :   Orbit response matrix Y
+%   id_to_bpm_x :   IDs of used BPMs X
+%   id_to_cm_x  :   IDs of used CMs X
+%   id_to_bpm_y :   IDs of used BPMs Y
+%   id_to_cm_y  :   IDs of used CMs Y
+%   nd          :   Number of delay steps
+%   fname       :   Filename to save matrices (optional)
+%   print_msg   :   Boolean to print debug info (optional)
+%
+% Outputs:
+%   Ao, Bo, Co      : Observer state-space system (without disturbance)
+%   Ap, Bp, Cp      : Plant state-space matrices
+%   Ad, Cd          : Disturbance model state-space system
+%   Kfd, Kfx        : Observer gains for disturbance and states
+%   Kcx, Kcd        : LQR matrices for states and disturbance
+%   P               : Terminal cost matrix
+%   Rlqr            : Input weights
+%   Qlqr            : State weights
+%
 function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
           Kfd_x, Kfx_x, Kcx_x, Kcd_x, P_x, Rlqr_x, Qlqr_x,...
           Ao_y, Bo_y, Co_y, Ap_y, Bp_y, Cp_y, Ad_y, Cd_y,...
           Kfd_y, Kfx_y, Kcx_y, Kcd_y, P_y, Rlqr_y, Qlqr_y] =...
-          observer_regulator(RMorigx,RMorigy,id_to_bpm_x, id_to_cm_x, id_to_bpm_y,id_to_cm_y,nd,fname,print_msg)
+          observer_regulator(RMorigx, RMorigy,...
+                             id_to_bpm_x, id_to_cm_x,...
+                             id_to_bpm_y, id_to_cm_y,... 
+                             nd, fname, print_msg)
     if nargin < 8; fname = ''; end
     if nargin < 9; print_msg = false; end
     %% Configure Diamond-I Storage Ring
@@ -76,11 +102,8 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             Bp = [1-a; zeros(nd,1)]; 
             % Cp = [zeros(1,nd), sval]; % we don't use this. same weights
             % for every mode
-
-            % [K,S,E] = dlqr(A,B,Q,R,N)
-            % u[n] = -Kx[n]
-            % J = Sum {x'Qx + u'Ru + 2*x'Nu}
-            % x[n+1] = Ax[n] + Bu[n]
+            
+            % Different state and input gains
             Qlqr = diag([1,zeros(1,nd)]);
             %Qlqr = diag([sval^2,zeros(1,nd)]);
             %Rlqr = sqrt((mu+sval^2)/sval^2); % up to v105-xi 
@@ -110,14 +133,6 @@ function [Ao_x, Bo_x, Co_x, Ap_x, Bp_x, Cp_x, Ad_x, Cd_x,...
             sensitivity_lqr(:,imode) = CL_w;
             tmp = freqresp(1/(1+g*c_imc),w_Hz,'Hz'); tmp = abs(tmp(:));
             sensitivity_imc(:,imode) = tmp;
-            
-            if false
-                figure; bode(OL); grid on;
-                figure; 
-                semilogx(w_Hz,20*log10(CL_w),'b'); hold on;
-                semilogx(w_Hz,20*log10(tmp),'r');
-                grid on;
-            end
         end
 
         if i==1

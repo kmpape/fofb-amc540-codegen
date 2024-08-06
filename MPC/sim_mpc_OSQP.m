@@ -1,4 +1,4 @@
-%sim_mpc.m Run MPC simulation using fast gradient method
+%sim_mpc_OSQP.m Run MPC simulation using OSQP
 %
 % Inputs:
 %   n_samples   : Number of samples. Must match size(dist,2)
@@ -9,8 +9,7 @@
 %   Ad, Cd      : Disturbance observer
 %   LxN_obs     : State observer gain
 %   Lxd_obs     : Disturbance observer gain
-%   J_MPC       : Modified Hessian of QP in FGM form
-%   beta_fgm    : FGM step size
+%   J_MPC       : Hessian of QP 
 %   q_mat       : Matrix to compute q = q_mat*[x0_obs_new; xd_obs_new]
 %   y_max       : Output constraint amplitude limit
 %   u_max       : Input constraint amplitude limit
@@ -24,36 +23,27 @@
 % Outputs:
 %   y_sim       : Simulated output
 %   u_sim       : Simulated inputs
-%   x_sim       : Simulated states
-%   obs_y       : Measured output (observer)
-%   obs_u       : Inputs (observer)
-%   obs_x0      : Observer state estimate (most recent)
-%   obs_xd      : Observer disturbance estimate
-%   fgm_x0      : Observer state estimate (most recent)
-%   fgm_xd      : Observer disturbance estimate
-%   fgm_out     : Solution produced by FGM
-%   lower_u     : Lower bound for u
-%   upper_u     : Lower bound for u
 %
-function [y_sim,u_sim,x_sim,...
-    obs_y,obs_u,obs_x0,obs_xd,...
-    fgm_x0,fgm_xd,fgm_u,fgm_out,lower_u,upper_u] = sim_mpc(...
+function [y_sim,u_sim] = sim_mpc_OSQP(...
             n_samples, n_delay, dist,...
             Ap, Bp, Cp,... % Plant
             Ao, Bo, Co, Ad, Cd, LxN_obs, Lxd_obs,... % Observer
-            J_MPC, q_mat, beta_fgm,... % FGM
-            u_max, u_rate,...
-            id_to_bpm, id_to_cm,...
-            A_awr, B_awr, C_awr, D_awr,...
-            SOFB_setp, ol_mode)
+            J_MPC, q_mat, y_max,...
+            u_max, u_rate,... % Input constraints
+            id_to_bpm, id_to_cm,... % Mapping for used BPMs & CMs
+            A_awr, B_awr, C_awr, D_awr,... % Used for rate constraints
+            SOFB_setp,... % Additional magnet setpoints
+            ol_mode)  % Run in open-loop mode
+        
 if ~exist('ol_mode','var')
     ol_mode = false;
 end
         
 %%
 assert((n_delay == 8)||n_delay==9);
-use_single = true;
+use_single = false;
 hil_mode = true;
+
 
 [nx_plant, nu_plant] = size(Bp);
 [ny_plant, ~] = size(Cp);
@@ -64,7 +54,6 @@ hil_mode = true;
 x_sim_new=zeros(nx_plant,1); x_sim_old=zeros(nx_plant,1);
 y_sim = zeros(ny_plant, n_samples);
 u_sim = zeros(nu_plant, n_samples);
-x_sim = zeros(nu_plant, n_samples);
 
 % Variables AWR
 [ny_awr,nx_awr]=size(C_awr);
@@ -73,6 +62,7 @@ y_awr=zeros(ny_awr,1);
 
 % Variables Observer
 if use_single == true
+    x0_obs_new=single(zeros(nx_obs,1));
     x0_obs_old=single(zeros(nx_obs,1)); x1_obs_old=single(zeros(nx_obs,1));
     x2_obs_old=single(zeros(nx_obs,1)); x3_obs_old=single(zeros(nx_obs,1));
     x4_obs_old=single(zeros(nx_obs,1)); x5_obs_old=single(zeros(nx_obs,1));
@@ -88,17 +78,8 @@ if use_single == true
     Ao = single(Ao);      Bo = single(Bo);  Co = single(Co);
     Ad = single(Ad);      Cd = single(Cd);
     LxN_obs = single(LxN_obs);  Lxd_obs = single(Lxd_obs);
-    
-    obs_y = single(zeros(ny_obs,n_samples));
-    obs_u = single(zeros(nu_obs,n_samples));
-    obs_xd = single(zeros(ny_obs,n_samples));
-    obs_x0 = single(zeros(nx_obs,n_samples));
-
-    fgm_x0 = single(zeros(nx_obs,n_samples));
-    fgm_xd = single(zeros(ny_obs,n_samples));
-    fgm_u = single(zeros(nu_obs,n_samples));
-    fgm_out = single(zeros(nu_obs,n_samples));
 else
+    x0_obs_new=double(zeros(nx_obs,1));
     x0_obs_old=double(zeros(nx_obs,1)); x1_obs_old=double(zeros(nx_obs,1));
     x2_obs_old=double(zeros(nx_obs,1)); x3_obs_old=double(zeros(nx_obs,1));
     x4_obs_old=double(zeros(nx_obs,1)); x5_obs_old=double(zeros(nx_obs,1));
@@ -117,20 +98,40 @@ else
     
 end
 
-% Variables Fast Gradient
+% Variables Solver
 if use_single == true
-    J = single(J_MPC);
-    beta_fgm = single(beta_fgm);
+    J     = single(J_MPC);
     q_mat = single(q_mat);
-    z_new=single(zeros(nu_obs,1));
+    y_max = single(y_max);
+    u_max = single(u_max);
+    y_mat = single(Co*Ao);
 else
-    J = double(J_MPC);
-    beta_fgm = double(beta_fgm);
+    J     = double(J_MPC);
     q_mat = double(q_mat);
-    z_new=double(zeros(nu_obs,1));
+    y_max = double(y_max);
+    u_max = double(u_max);
+    y_mat = double(Co*Ao);
 end
 
+
 MAX_ITER = 20;
+osqp_solver = osqp;
+settings = osqp_solver.default_settings();
+settings.verbose = 0;
+settings.polish = 0;
+settings.adaptive_rho = 0;
+settings.max_iter = MAX_ITER;
+settings.check_termination = MAX_ITER;
+
+A_constr = [eye(ny_obs); Co*Bo];
+l_constr = [max(-u_max-SOFB_setp,-u_rate+y_awr);...
+            -y_max-y_mat*x0_obs_new];
+u_constr = [min(u_max-SOFB_setp,u_rate+y_awr);...
+            y_max-y_mat*x0_obs_new];
+osqp_solver.setup(J, zeros(1,size(q_mat,1)), A_constr, l_constr, u_constr, settings);
+
+x0_obs = zeros(nx_obs,n_samples);
+xd_obs = zeros(ny_obs,n_samples);
 for k = 1:1:n_samples
 
     % Measurement
@@ -154,10 +155,8 @@ for k = 1:1:n_samples
                 y_meas = double(y_sim(id_to_bpm, k-n_delay));
             end
         end
-        obs_y(:,k-n_delay) = y_meas;
         % Observer - state update
         if use_single == true
-            obs_u(:,k-n_delay) = single(u_sim(id_to_cm,k-1));
             x0_obs_new = Ao*x0_obs_old + Bo*single(u_sim(id_to_cm,k-1));
         else
             x0_obs_new = Ao*x0_obs_old + Bo*double(u_sim(id_to_cm,k-1));
@@ -203,8 +202,7 @@ for k = 1:1:n_samples
             x2_obs_new = x2_obs_new + Apow6 * delta_xN;
             x1_obs_new = x1_obs_new + Apow7 * delta_xN; 
             x0_obs_new = x0_obs_new + Apow8 * delta_xN; % -> result
-        end
-        
+        end        
         xd_obs_old = xd_obs_new;
         x0_obs_old = x0_obs_new;
         x1_obs_old = x1_obs_new;
@@ -216,57 +214,44 @@ for k = 1:1:n_samples
         x7_obs_old = x7_obs_new;
         if (n_delay==9); x8_obs_old = x8_obs_new; end
         
-        obs_x0(:,k-n_delay) = x0_obs_new;
-        obs_xd(:,k-n_delay) = xd_obs_new;
-
+        x0_obs(:,k) = x0_obs_new;
+        xd_obs(:,k) = xd_obs_new;
+        
         % Compute q-vector
-        fgm_x0(:,k-n_delay) = x0_obs_new;
-        fgm_xd(:,k-n_delay) = xd_obs_new;
-        fgm_u(:,k-n_delay) = single(u_sim(id_to_cm,k-1));
         q = q_mat*[x0_obs_new; xd_obs_new];
 
         % Compute lower and upper limit
         if use_single == true
-            lower_u = max(-u_max-single(SOFB_setp),-u_rate+single(y_awr));
-            upper_u = min(u_max-single(SOFB_setp),u_rate+single(y_awr));
+            l_constr = [max(-u_max-single(SOFB_setp),-u_rate+single(y_awr));...
+                        -y_max-y_mat*single(x0_obs_new)];
+            u_constr = [min(u_max-SOFB_setp,u_rate+single(y_awr));...
+                        y_max-y_mat*single(x0_obs_new)];
         else
-            lower_u = max(-u_max-double(SOFB_setp),-u_rate+double(y_awr));
-            upper_u = min(u_max-double(SOFB_setp),u_rate+double(y_awr));
-        end
-        assert(sum(lower_u > upper_u)==0)
-
-        % Fast gradient method
-        if use_single == true
-            out_global = single(u_sim(id_to_cm,k-1));
-        else            
-            out_global = double(u_sim(id_to_cm,k-1));
-        end
-        for i_iter = 1 : 1 : MAX_ITER
-            z_old = z_new;
-            t = J*out_global - q;
-            z_new = max(lower_u, min(upper_u, t));
-            out_global = (1+beta_fgm) * z_new - beta_fgm*z_old;
-        end
-        fgm_result = z_new; % new: use z_new instead of out_global
-        fgm_out(:,k-n_delay) = fgm_result;
+            l_constr = [max(-u_max-double(SOFB_setp),-u_rate+double(y_awr));...
+                        -y_max-y_mat*double(x0_obs_new)-double(xd_obs_new)];
+            u_constr = [min(u_max-SOFB_setp,u_rate+double(y_awr));...
+                        y_max-y_mat*double(x0_obs_new)-double(xd_obs_new)];
+        end        
+        osqp_solver.update('q', q, 'l', l_constr, 'u', u_constr);
+        result = osqp_solver.solve();
+        osqp_result = result.x(1:nu_obs);
+        assert((result.info.status_val == 1) || (result.info.status_val == 2));
         if hil_mode == true
-            fgm_result = round(fgm_result*1e3,0)/1e3; % note that MPC setpoint is in mA and we are streaming microA
+            osqp_result = round(osqp_result*1e6,0)/1e6;
         end
-        u_sim(id_to_cm,k) = double(fgm_result);
+        u_sim(id_to_cm,k) = double(osqp_result);
         
         % AWR
         x_awr_old = x_awr_new;
-        x_awr_new = A_awr*x_awr_old + B_awr*(double(fgm_result));
-        y_awr = C_awr*x_awr_new + D_awr*(double(fgm_result));
+        x_awr_new = A_awr*x_awr_old + B_awr*(double(osqp_result));
+        y_awr = C_awr*x_awr_new + D_awr*(double(osqp_result));
     end
     
     % Plant
     x_sim_old = x_sim_new;
-    x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k)); % note that the plant model accepts mA, but in D-I we need ending up with A
-    x_sim(:, k) = x_sim_old;
+    x_sim_new = Ap*x_sim_old + Bp*(u_sim(:,k));
 end
 u_sim = u_sim';
 y_sim = y_sim';
-x_sim = x_sim';
 
 end
