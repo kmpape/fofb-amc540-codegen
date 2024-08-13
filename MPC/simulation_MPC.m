@@ -4,7 +4,7 @@ addpath('/home/idris/Documents/EngSci/Matlab/simulink_models');
 addpath('/home/idris/Documents/EngSci/Matlab/osqp/osqp-0.4.1-matlab-linux64');
 addpath('/home/idris/Documents/EngSci/Matlab');
 addpath('..')
-asdf
+
 clear all
 %close all
 clc
@@ -102,12 +102,13 @@ u_max = hardlimits(id_to_cm)*1000;
 y_max_scalar = 200;
 y_max = ones(length(id_to_bpm),1)*y_max_scalar;
 J_mpc = Bo'*P_mpc*Bo+R_mpc;
-S_sp_pinv_x = S_sp_pinv(1:nx,:);
-S_sp_pinv_u = S_sp_pinv(nx+1:end,:);
+S_sp_pinv_x = S_sp_pinv(1:nx,:);     % note that this = pinv(Co)
+S_sp_pinv_u = S_sp_pinv(nx+1:end,:); % note that this = pinv(Co)
 q_mat_x0 = Bo'*P_mpc*Ao;
 q_mat_xd = -[Bo'*P_mpc, R_mpc]*[S_sp_pinv_x; S_sp_pinv_u]*(-Cd);
+q_mat_xd_v2 = (Bo'*P_mpc+R_mpc)*pinv(Co)*Cd;  % simplified
 q_mat = [q_mat_x0, q_mat_xd];
-
+asdf
 % Solver
 if use_FGM == true
     eigmax = max(eig(J_mpc)); 
