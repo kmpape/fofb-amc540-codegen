@@ -96,6 +96,12 @@ for k = 1:1:n_samples
         x_obs_new = x_obs_new +fliplr(reshape(ApowN * delta_xN,...
                                               [nx_obs, n_delay+1]));
         
+        %Copy new to old state
+        xd_obs_old = xd_obs_new;
+        x_obs_old(:,1:end-1) = x_obs_new(:,1:end-1);
+
+
+
         % Compute q vector
         q = q_mat*[x_obs_new(:, 1); xd_obs_new];
 
